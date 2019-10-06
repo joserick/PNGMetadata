@@ -1,0 +1,22 @@
+{
+    "name": "joserick/png-metadata",
+    "description": "A PHP library for extract the metadata (XMP, EXIF) within a PNG format image.",
+    "keywords": ["metadata", "png", "exif", "xmp" "exiftool"],
+    "type": "library",
+    "license": "GPL-3.0",
+    "authors": [
+        {
+            "name": "Jóse Erick Carreón",
+            "email": "joserick.92@gmail.com",
+            "homepage": "https://github.com/joserick"
+        }
+    ],
+    "require": {
+        "php": ">=5.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "PNGMetadata\\": "src/"
+        }
+    }
+}
