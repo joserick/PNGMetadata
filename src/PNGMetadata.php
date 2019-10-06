@@ -4,7 +4,7 @@ namespace PNGMetadata;
 
 use ArrayObject;
 use Exception;
-use Namespaces;
+use PNGMetadata\Namespaces;
 
 /**
  * PNG Metadata.
@@ -177,12 +177,18 @@ class PNGMetadata extends ArrayObject {
 
 		$data  = $this->printVertical();
 		$max_len = max( array_map( 'strlen', array_keys( $data ) ) ) + 10;
-		$html_shell = ( 'cli' === PHP_SAPI && ! defined('STDOUT') ? '<br>' : "\n" );
-		$strings[] = str_pad( '--Metadata--', $max_len ) . '--Value--' . $html_shell;
+		$strings[] = str_pad( '--Metadata--', $max_len ) . '--Value--' . "\n";
 
 		foreach ( $data as $key => $value ) {
 
-			$strings[] = str_pad( trim( $key ), $max_len ) . $value . $html_shell;
+			$strings[] = str_pad( trim( $key ), $max_len ) . $value . "\n";
+
+		}
+
+		if ( php_sapi_name() !== 'cli' ) {
+
+			array_unshift( $strings, '<pre>' );
+			$strings[] = '</pre>';
 
 		}
 
