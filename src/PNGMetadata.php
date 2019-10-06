@@ -418,7 +418,7 @@ class PNGMetadata extends ArrayObject {
 	 */
 	private function extractExif() {
 
-		if ( $this->_chunks[ 'eXIf' ] ) {
+		if ( isset ( $this->_chunks[ 'eXIf' ] ) ) {
 
 			$this->_metadata[ 'exif' ] = array_replace( $this->_metadata[ 'exif' ],
 				exif_read_data( 'data://image/jpeg;base64,' . base64_encode( $this->_chunks[ 'eXIf' ] ) ) );
