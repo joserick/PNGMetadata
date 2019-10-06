@@ -4,6 +4,8 @@ PNGMetadata is a library which is able to extract the metadata of an image in pn
 
 It is important to mention that PNGMetadata does **not** use the software ExifTool so it is completely native.
 
+![PNGMetadata.gif](http://docs.joserick.com/pngmetadata/PNGMetadata.gif)
+
 ## Requirements
 - PHP >= 5.6
 - XML PHP Extension
