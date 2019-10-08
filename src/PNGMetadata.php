@@ -3,8 +3,8 @@
 namespace PNGMetadata;
 
 use ArrayObject;
+use DomDocument;
 use Exception;
-use PNGMetadata\Namespaces;
 
 /**
  * PNG Metadata.
@@ -65,6 +65,21 @@ class PNGMetadata extends ArrayObject {
 	 * @access private
 	 */
 	private $_chunks = [];
+
+	/**
+	 * The list of XMP tags to remove.
+	 *
+	 * Tags that are not necessary to be seen in the output but if its values.
+	 *
+	 * @var array
+	 * @access private
+	 */
+	private $_tagsToFatten = [
+		'@attributes', 'stEvt', 'stRef', 'dc', 'xmp', 'xmpRights', 'xmpMM', 'xmpBJ', 'xmpTPg',
+		'xmpDM', 'pdf', 'photoshop', 'crs', 'crss', 'tiff', 'exif', 'exifEX', 'aux', 'Iptc4xmpCore',
+		'Iptc4xmpExt', 'plus', 'mwg-rs', 'mwg-kw', 'dwc', 'dcterms', 'digiKam', 'kipi', 'GPano',
+		'lr', 'acdsee', 'mediapro', 'expressionmedia', 'MicrosoftPhoto', 'MP', 'MPRI', 'MPReg'
+	];
 
 	/**
 	 * Initializes the functions required for metadata extraction.
@@ -215,11 +230,19 @@ class PNGMetadata extends ArrayObject {
 
 		}
 
-		foreach ( ( ( $array ) ? $array : $this->_metadata ) as $key => $value) {
+		foreach ( ( ( $array ) ? $array : $this->_metadata ) as $key => $value ) {
 
 			if ( is_array( $value ) ) {
 
-				$colums[] = $this->printVertical(  $last_key . $key, $value );
+				if ( isset( $value[ 0 ] ) ) {
+
+					$colums[] = [ $last_key . $key => implode( ',', $value ) ];
+
+				} else {
+
+					$colums[] = $this->printVertical(  $last_key . $key, $value );
+
+				}
 
 			} else {
 
@@ -268,8 +291,8 @@ class PNGMetadata extends ArrayObject {
 
 			} else {
 
-				if ($chunk[ 'type' ] == 'eXIf' || $chunk[ 'type' ] == 'sRGB' || $chunk[ 'type' ] == 'iTXt' ||
-					$chunk[ 'type' ] == 'bKGD' ) {
+				if ($chunk[ 'type' ] == 'eXIf' || $chunk[ 'type' ] == 'sRGB' ||
+					$chunk[ 'type' ] == 'iTXt' || $chunk[ 'type' ] == 'bKGD' ) {
 
 				$lastoffset = ftell( $content );
 				$this->_chunks[$chunk[ 'type' ]] = fread( $content, $chunk[ 'size' ] );
@@ -470,7 +493,7 @@ class PNGMetadata extends ArrayObject {
 
 		if ( isset( $this->_chunks[ 'iTXt' ] ) && strncmp( $this->_chunks[ 'iTXt' ], 'XML:com.adobe.xmp', 17 ) === 0 ) {
 
-			$dom = new \DomDocument( '1.0', 'UTF-8' );
+			$dom = new DomDocument( '1.0', 'UTF-8' );
 			$dom->preserveWhiteSpace = false;
 			$dom->formatOutput = false;
 			$dom->substituteEntities = false;
@@ -485,45 +508,112 @@ class PNGMetadata extends ArrayObject {
 
 			}
 
-			$xpath = new \DOMXPath( $dom );
+			$result = $this->extractNodesXML( $dom->documentElement );
+			$this->flattenAttributes( $result );
 
-			$namespaces = new Namespaces();
+			foreach ( $result as $tag => $value ) {
 
-			foreach ( $namespaces->getURIs() as $prefix => $url ) {
+				if ( is_array( $value ) && count( $value ) === 1 ) {
 
-				$xpath->registerNamespace( $prefix, $url );
+					if ( isset( $value[ 0 ] ) ) {
 
-			}
-
-
-			foreach ( $namespaces->getURIs() as $prefix => $url ) {
-				
-				foreach ( [ '', '@' ] as $char ) {
-
-					$description = $xpath->query(
-						sprintf( "//rdf:Description[%s*[namespace-uri()='$url']]", $char ) );
-
-					if ( $description->length > 0 ) {
-
-						$rdfDesc = $description->item( 0 );
-						break;
+						$result[ $tag ] = current( $value );
 
 					}
 
 				}
 
-				if ( ! isset( $rdfDesc ) ) continue;
+			}
 
-				$result = $this->extractRDF( $xpath->query( $prefix.':*', $rdfDesc ), $xpath );
+			if ( ! empty( $result ) ) {
 
-				if ( ! empty( $result ) ) {
-
-					$this->_metadata[$prefix] = $result;
-
-				}
+				$this->_metadata[ 'xmp' ] = array_merge( $this->_metadata , $result );
 
 			}
 
+		}
+
+	}
+
+	/**
+	 * Extract the tag attributes and insert them in the first level of the array base.
+	 *
+	 * @access private
+	 *
+	 * @param  array $base   Array where the attributes will be inserted.
+	 * @param  array $values Matrix that contains the attributes.
+	 *
+	 * @return void
+	 */
+	private function flattenAttributes( &$base, &$values = null ) {
+
+		foreach ( $this->_tagsToFatten as $flatten ) {
+
+			$this->flatten( $flatten, $base, $values );
+
+		}
+
+	}
+
+	/**
+	 * Extract the proprietary of a tag specific and insert them in the first level of the array base.
+	 *
+	 * @access private
+	 *
+	 * @param  array $base   Array where the attributes will be inserted.
+	 * @param  array $values Matrix that contains the attributes.
+	 *
+	 * @return void
+	 */
+	private function flatten( $flatten, &$base, &$values ) {
+
+		if ( $values ) {
+
+			if ( isset( $values[ $flatten ] ) ) {
+
+				foreach ( $values[ $flatten ] as $key => $value ) {
+
+					if ( isset( $base[ $key ] ) ) {
+
+						if ( is_array( $value ) ) {
+
+							$this->flatten( $key, $base[ $key ], $values[ $flatten ] );
+
+						} else {
+
+							if ( $base[ $key ] != $value ) {
+
+								$base[ $key ] .= ',' . $value;
+
+							}
+
+						}
+
+					} else {
+
+						$base[ $key ] = $value;
+
+					}
+
+				}
+
+				unset( $values[ $flatten ] );
+
+			}
+
+		} else {
+
+			if ( isset( $base[ $flatten ] ) ) {
+
+				foreach ( $base[ $flatten ] as $key => $value) {
+
+					$base[ $key ] = $value;
+
+				}
+
+				unset( $base[ $flatten ] );
+
+			}
 		}
 
 	}
@@ -539,55 +629,87 @@ class PNGMetadata extends ArrayObject {
 	 * 
 	 * @return array
 	 */
-	private function extractRDF( $result, $xpath ) {
+	function extractNodesXML( $node ) {
 
-		$data = [];
+		$output = [];
 
-		if ( $result->length ) {
+		switch ( $node->nodeType ) {
 
-			for ( $j=0; $j < $result->length; $j++ ) {
+			case 1:
 
-				$node = $result->item( $j );
+				for ( $i = 0; $i < $node->childNodes->length; $i++ ) {
 
-				if ( $node ) {
+					$child = $node->childNodes->item( $i );
+					$values = $this->extractNodesXML( $child ) ;
 
-					$xrdf = $xpath->query( 'rdf:*', $node )->item( 0 );
+					if ( isset( $child->tagName ) ) {
 
-					if ( $xrdf ) {
+						if (  strpos( $child->tagName, 'rdf:' ) === 0 ) {
 
-						if ( $xrdf->localName == 'Alt' || $xrdf->localName == 'Bag' ) {
+							if ( is_array( $values ) ) {
 
-							$data[ $node->localName ] = $xrdf->childNodes->item( 0 )->nodeValue;
+								$this->flattenAttributes( $output, $values );
 
-						} else {
+								$output = array_merge( $output, $values );
 
-							for ($i = 0; $i < $xrdf->childNodes->length; $i++) {
-								
-								$items = $this->extractRDF( $xpath->query( $node->prefix.':*', $xrdf->childNodes->item( $i ) ), $xpath );
+							} else {
 
-								if ( ! empty( $items ) ) {
-
-									$data[ $node->localName ] = $items;
-
-								}
+								$output[] = $values;
 
 							}
 
+						} else {
+
+							$this->flattenAttributes( $values );
+
+							$prefixs = explode( ':', $child->tagName );
+
+							$output[ $prefixs[ 0 ] ][ $prefixs[ 1 ] ] = $values;
+
 						}
 
-					} else {
+					} elseif ( $values || $values === '0' ) {
 
-						$data[ $node->localName ] = $node->textContent;
+						$output = ( string ) $values;
 
 					}
 
 				}
 
-			}
+				if ( $node->attributes->length && !is_array( $output ) ) {
+
+					$output = [ '@content' => $output ];
+				}
+
+				if ( is_array( $output ) ) {
+
+					if ( $node->attributes->length ) {
+
+						foreach ( $node->attributes as $attrName => $attrNode ) {
+
+							if ( $attrNode->value ) {
+
+								$output[ '@attributes' ][ $attrName ] = $attrNode->value;
+
+							}
+
+						}
+
+					}
+
+				}
+
+				break;
+
+			case 4:	case 3:
+
+				$output = trim( $node->textContent );
+
+				break;
 
 		}
 
-		return $data;
+		return $output;
 
 	}
 
