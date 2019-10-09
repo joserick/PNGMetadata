@@ -74,12 +74,22 @@ class PNGMetadata extends ArrayObject {
 	 * @var array
 	 * @access private
 	 */
-	private $_tagsToFatten = [
-		'@attributes', 'stEvt', 'stRef', 'dc', 'xmp', 'xmpRights', 'xmpMM', 'xmpBJ', 'xmpTPg',
-		'xmpDM', 'pdf', 'photoshop', 'crs', 'crss', 'tiff', 'exif', 'exifEX', 'aux', 'Iptc4xmpCore',
-		'Iptc4xmpExt', 'plus', 'mwg-rs', 'mwg-kw', 'dwc', 'dcterms', 'digiKam', 'kipi', 'GPano',
-		'lr', 'acdsee', 'mediapro', 'expressionmedia', 'MicrosoftPhoto', 'MP', 'MPRI', 'MPReg'
+	private $_tagsXMP = [
+		'dc', 'xmp', 'xmpRights', 'xmpMM', 'xmpBJ', 'xmpTPg', 'xmpDM', 'pdf', 'photoshop',
+		'crs', 'crss', 'tiff', 'exif', 'exifEX', 'aux', 'Iptc4xmpCore', 'Iptc4xmpExt',
+		'plus', 'mwg-rs', 'mwg-kw', 'dwc', 'dcterms', 'digiKam', 'kipi', 'GPano', 'lr',
+		'acdsee', 'mediapro', 'expressionmedia', 'MicrosoftPhoto', 'MP', 'MPRI', 'MPReg'
 	];
+
+	/**
+	 * The list of XMP prefix and suffix to remove.
+	 *
+	 * The prefix and suffix that are not necessary to be seen in the output but if its values.
+	 *
+	 * @var array
+	 * @access private
+	 */
+	private $_prefSuffXMP = [ 'stRef', 'rdf', 'li', 'Alt', 'stEvt', 'Bag', 'Seq', 'crs' ];
 
 	/**
 	 * Initializes the functions required for metadata extraction.
@@ -508,26 +518,11 @@ class PNGMetadata extends ArrayObject {
 
 			}
 
-			$result = $this->extractNodesXML( $dom->documentElement );
-			$this->flattenAttributes( $result );
-
-			foreach ( $result as $tag => $value ) {
-
-				if ( is_array( $value ) && count( $value ) === 1 ) {
-
-					if ( isset( $value[ 0 ] ) ) {
-
-						$result[ $tag ] = current( $value );
-
-					}
-
-				}
-
-			}
+			$result = $this->flatten( $this->extractNodesXML( $dom->documentElement ) );
 
 			if ( ! empty( $result ) ) {
 
-				$this->_metadata[ 'xmp' ] = array_merge( $this->_metadata , $result );
+				$this->_metadata[ 'xmp' ] = $result;
 
 			}
 
@@ -536,85 +531,87 @@ class PNGMetadata extends ArrayObject {
 	}
 
 	/**
-	 * Extract the tag attributes and insert them in the first level of the array base.
+	 * Extract the properties with the key '0' and insert them in the first level of the array.
 	 *
 	 * @access private
 	 *
-	 * @param  array $base   Array where the attributes will be inserted.
-	 * @param  array $values Matrix that contains the attributes.
+	 * @param  array $array Matrix that contains the proprietary.
 	 *
 	 * @return void
 	 */
-	private function flattenAttributes( &$base, &$values = null ) {
+	private function flatten( $array ){
 
-		foreach ( $this->_tagsToFatten as $flatten ) {
+		foreach( $array as $key => $value ){
 
-			$this->flatten( $flatten, $base, $values );
+			if ( is_array( $value ) ){
+
+				if ( isset( $value[ 0 ] ) && count( $value ) == 1 ) {
+
+					$array[ $key ] = $value[ 0 ];
+
+					if ( is_array( $array[ $key ] ) ) {
+
+						$array[ $key ] = $this->flatten( $array[ $key ] );
+
+					}
+
+				}else{
+
+					$array[ $key ] = $this->flatten( $value );
+
+				}
+
+			}
 
 		}
+
+		return $array;
 
 	}
 
 	/**
-	 * Extract the proprietary of a tag specific and insert them in the first level of the array base.
+	 * Merge one or more arrays more string concatenation.
 	 *
 	 * @access private
 	 *
-	 * @param  array $base   Array where the attributes will be inserted.
-	 * @param  array $values Matrix that contains the attributes.
+	 * @param  array $baseArray   Array where the attributes will be inserted.
+	 * @param  array $array       Matrix that contains the attributes.
 	 *
-	 * @return void
+	 * @return array
 	 */
-	private function flatten( $flatten, &$base, &$values ) {
+	private function arrayMerge($baseArray, $array){
 
-		if ( $values ) {
+		foreach ( $array as $key => $value ) {
 
-			if ( isset( $values[ $flatten ] ) ) {
+			if (is_object($value)) {
+				$value = $value->value;
+			}
 
-				foreach ( $values[ $flatten ] as $key => $value ) {
+			if ( isset( $baseArray[ $key ] ) ) {
 
-					if ( isset( $base[ $key ] ) ) {
+				if ( is_array( $value ) ) {
 
-						if ( is_array( $value ) ) {
+					$baseArray[ $key ] = $this->arrayMerge( $baseArray[ $key ], $array[ $key ] );
 
-							$this->flatten( $key, $base[ $key ], $values[ $flatten ] );
+				} else {
 
-						} else {
+					if ( $baseArray[ $key ] != $value ) {
 
-							if ( $base[ $key ] != $value ) {
-
-								$base[ $key ] .= ',' . $value;
-
-							}
-
-						}
-
-					} else {
-
-						$base[ $key ] = $value;
+						$baseArray[ $key ] .= ',' . $value;
 
 					}
 
 				}
 
-				unset( $values[ $flatten ] );
+			} else {
+
+				$baseArray[ $key ] = $value;
 
 			}
 
-		} else {
-
-			if ( isset( $base[ $flatten ] ) ) {
-
-				foreach ( $base[ $flatten ] as $key => $value) {
-
-					$base[ $key ] = $value;
-
-				}
-
-				unset( $base[ $flatten ] );
-
-			}
 		}
+
+		return $baseArray;
 
 	}
 
@@ -640,60 +637,67 @@ class PNGMetadata extends ArrayObject {
 				for ( $i = 0; $i < $node->childNodes->length; $i++ ) {
 
 					$child = $node->childNodes->item( $i );
-					$values = $this->extractNodesXML( $child ) ;
+					$childValues = $this->extractNodesXML( $child ) ;
 
 					if ( isset( $child->tagName ) ) {
 
-						if (  strpos( $child->tagName, 'rdf:' ) === 0 ) {
+						list( $prefixTagName, $suffixTagName ) = explode( ':', $child->tagName );
 
-							if ( is_array( $values ) ) {
+						if ( is_array( $childValues ) ) {
 
-								$this->flattenAttributes( $output, $values );
+							if ( in_array( $prefixTagName, $this->_tagsXMP ) ) {
 
-								$output = array_merge( $output, $values );
+								if ( !isset( $output[ $suffixTagName ] ) ) {
+
+									$output[ $suffixTagName ] = [];
+
+								}
+
+								$output[ $suffixTagName ] =
+									$this->arrayMerge( $output[ $suffixTagName ], $childValues );
 
 							} else {
 
-								$output[] = $values;
+								$output = $this->arrayMerge( $output, $childValues );
 
 							}
 
 						} else {
 
-							$this->flattenAttributes( $values );
+							if ( in_array( $prefixTagName, $this->_prefSuffXMP ) ||
+								in_array( $prefixTagName, $this->_tagsXMP ) ) {
 
-							$prefixs = explode( ':', $child->tagName );
+								if ( in_array( $suffixTagName, $this->_prefSuffXMP ) ) {
 
-							$output[ $prefixs[ 0 ] ][ $prefixs[ 1 ] ] = $values;
+									$output[] = $childValues;
+
+								} else {
+
+									$output[ $suffixTagName ][] =  $childValues;
+
+								}
+
+							} else {
+
+								$output[ $prefixTagName ][ $suffixTagName ][] =  $childValues;
+
+							}
 
 						}
 
-					} elseif ( $values || $values === '0' ) {
+					} elseif ( $childValues || $childValues === '0' ) {
 
-						$output = ( string ) $values;
+						$output = ( string ) $childValues;
 
 					}
 
-				}
-
-				if ( $node->attributes->length && !is_array( $output ) ) {
-
-					$output = [ '@content' => $output ];
 				}
 
 				if ( is_array( $output ) ) {
 
 					if ( $node->attributes->length ) {
 
-						foreach ( $node->attributes as $attrName => $attrNode ) {
-
-							if ( $attrNode->value ) {
-
-								$output[ '@attributes' ][ $attrName ] = $attrNode->value;
-
-							}
-
-						}
+						$output = $this->arrayMerge( $output, $node->attributes );
 
 					}
 
