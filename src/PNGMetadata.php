@@ -181,7 +181,7 @@ class PNGMetadata extends ArrayObject
 							$output[$prefixTagName][$suffixTagName][] = $childValues;
 						}
 					} elseif ($childValues || $childValues === '0') {
-						$output = ( string ) $childValues;
+						$output = (string) $childValues;
 					}
 				}
 				if (is_array($output) && $node->attributes->length) {
@@ -230,7 +230,7 @@ class PNGMetadata extends ArrayObject
 	private function extractChunks(string $path): void
 	{
 		$content = fopen($path, 'rb');
-		if ("\x89PNG\x0d\x0a\x1a\x0a" !== fread($content, 8)) {
+		if (fread($content, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
 			throw new \InvalidArgumentException('Invalid PNG file signature, path "' . $path . '" given.');
 		}
 
@@ -316,7 +316,7 @@ class PNGMetadata extends ArrayObject
 	private function extractBKGD(): void
 	{
 		if (isset($this->chunks['bKGD'])) {
-			$this->metadata['bKGD'] = join(" ", unpack(strlen($this->chunks['bKGD']) < 2 ? 'C' : 'n*', $this->chunks['bKGD']));
+			$this->metadata['bKGD'] = implode(' ', unpack(strlen($this->chunks['bKGD']) < 2 ? 'C' : 'n*', $this->chunks['bKGD']));
 		}
 	}
 
@@ -329,7 +329,7 @@ class PNGMetadata extends ArrayObject
 	{
 		if (isset($this->chunks['sRGB'])) {
 			$rbg = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
-			$this->metadata['sRBG'] = $rbg[end(... [unpack('C', $this->chunks['sRGB'])])];
+			$this->metadata['sRBG'] = $rbg[end(...[unpack('C', $this->chunks['sRGB'])])];
 		}
 	}
 
@@ -384,7 +384,7 @@ class PNGMetadata extends ArrayObject
 			$dom->substituteEntities = false;
 			$dom->loadXML(ltrim(substr($this->chunks['iTXt'], 17), "\x00"));
 			$dom->encoding = 'UTF-8';
-			if ('x:xmpmeta' !== $dom->documentElement->nodeName) {
+			if ($dom->documentElement->nodeName !== 'x:xmpmeta') {
 				error_log('ExtractRoot node must be of type x:xmpmeta.');
 
 				return;
