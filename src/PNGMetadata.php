@@ -6,7 +6,6 @@ namespace PNGMetadata;
 
 
 use ArrayObject;
-use Exception;
 
 /**
  * PNG Metadata.
@@ -88,7 +87,7 @@ class PNGMetadata extends ArrayObject
 	{
 		try {
 			return new self($path);
-		} catch (Exception $e) {
+		} catch (\Throwable $e) {
 			return null;
 		}
 	}
@@ -111,21 +110,16 @@ class PNGMetadata extends ArrayObject
 	 */
 	public function get(string $string)
 	{
-		if (is_string($string)) {
-			$array_value = &$this->metadata;
-			$keys = explode(':', $string);
-			foreach ($keys as $key) {
-				if (isset($array_value[$key])) {
-					$array_value = &$array_value[$key];
-				} else {
-					return null;
-				}
+		$return = &$this->metadata;
+		foreach (explode(':', $string) as $key) {
+			if (isset($return[$key])) {
+				$return = &$return[$key];
+			} else {
+				return null;
 			}
-
-			return $array_value;
 		}
 
-		return null;
+		return $return;
 	}
 
 
@@ -149,10 +143,10 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
-	 * @return mixed[]
+	 * @return mixed[]|string
 	 * @see PNGMetadata::extractRDF() To read a xml looking for metadata.
 	 */
-	public function extractNodesXML(\DOMElement $node): array
+	public function extractNodesXML(\DOMElement $node)
 	{
 		$output = [];
 		switch ($node->nodeType) {
@@ -174,18 +168,16 @@ class PNGMetadata extends ArrayObject
 						} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
 							if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
 								$output[] = $childValues;
-							} else {
-								$output[$suffixTagName][] = $childValues;
 							}
 						} else {
 							$output[$prefixTagName][$suffixTagName][] = $childValues;
 						}
-					} elseif ($childValues || $childValues === '0') {
-						$output = (string) $childValues;
+					} elseif ($childValues) {
+						$output = implode(', ', $childValues); // Possible bug?
 					}
 				}
 				if (is_array($output) && $node->attributes->length) {
-					$output = $this->arrayMerge($output, $node->attributes);
+					$output = $this->arrayMerge($output, (array) $node->attributes);
 				}
 				break;
 			case 4:
@@ -202,7 +194,7 @@ class PNGMetadata extends ArrayObject
 	 * Join the metadata keys until they reach their value.
 	 *
 	 * @param string last_key Key string from the previous array.
-	 * @param string[] $array Value from the previous array that is a array.
+	 * @param string[]|null $array Value from the previous array that is a array.
 	 * @return mixed[]
 	 */
 	private function printVertical(string $lastKey = '', ?array $array = null): array
@@ -329,7 +321,8 @@ class PNGMetadata extends ArrayObject
 	{
 		if (isset($this->chunks['sRGB'])) {
 			$rbg = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
-			$this->metadata['sRBG'] = $rbg[end(...[unpack('C', $this->chunks['sRGB'])])];
+			$unpacked = [unpack('C', $this->chunks['sRGB'])];
+			$this->metadata['sRBG'] = $rbg[end(...$unpacked)];
 		}
 	}
 
