@@ -143,37 +143,40 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * @param \DOMElement|\DOMNode $node
 	 * @return mixed[]|string
 	 * @see PNGMetadata::extractRDF() To read a xml looking for metadata.
 	 */
-	public function extractNodesXML(\DOMElement $node)
+	public function extractNodesXML($node)
 	{
 		$output = [];
 		switch ($node->nodeType) {
 			case 1:
 				for ($i = 0; $i < $node->childNodes->length; $i++) {
 					$child = $node->childNodes->item($i);
-					$childValues = $this->extractNodesXML($child);
-					if (isset($child->tagName)) {
-						[$prefixTagName, $suffixTagName] = explode(':', $child->tagName);
-						if (is_array($childValues)) {
-							if (\in_array($prefixTagName, $this->tagsXMP, true)) {
-								if (!isset($output[$suffixTagName])) {
-									$output[$suffixTagName] = [];
+					if ($child !== null) {
+						$childValues = $this->extractNodesXML($child);
+						if (isset($child->tagName)) {
+							[$prefixTagName, $suffixTagName] = explode(':', $child->tagName);
+							if (is_array($childValues)) {
+								if (\in_array($prefixTagName, $this->tagsXMP, true)) {
+									if (!isset($output[$suffixTagName])) {
+										$output[$suffixTagName] = [];
+									}
+									$output[$suffixTagName] = $this->arrayMerge($output[$suffixTagName], $childValues);
+								} else {
+									$output = $this->arrayMerge($output, $childValues);
 								}
-								$output[$suffixTagName] = $this->arrayMerge($output[$suffixTagName], $childValues);
+							} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
+								if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
+									$output[] = $childValues;
+								}
 							} else {
-								$output = $this->arrayMerge($output, $childValues);
+								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
-						} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
-							if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
-								$output[] = $childValues;
-							}
-						} else {
-							$output[$prefixTagName][$suffixTagName][] = $childValues;
+						} elseif ($childValues) {
+							$output = implode(', ', $childValues); // Possible bug?
 						}
-					} elseif ($childValues) {
-						$output = implode(', ', $childValues); // Possible bug?
 					}
 				}
 				if (is_array($output) && $node->attributes->length) {
@@ -193,7 +196,7 @@ class PNGMetadata extends ArrayObject
 	/**
 	 * Join the metadata keys until they reach their value.
 	 *
-	 * @param string last_key Key string from the previous array.
+	 * @param string $lastKey Key string from the previous array.
 	 * @param string[]|null $array Value from the previous array that is a array.
 	 * @return mixed[]
 	 */
@@ -321,7 +324,7 @@ class PNGMetadata extends ArrayObject
 	{
 		if (isset($this->chunks['sRGB'])) {
 			$rbg = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
-			$unpacked = [unpack('C', $this->chunks['sRGB'])];
+			$unpacked = unpack('C', $this->chunks['sRGB']);
 			$this->metadata['sRBG'] = $rbg[end(...$unpacked)];
 		}
 	}
