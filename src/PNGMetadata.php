@@ -170,12 +170,14 @@ class PNGMetadata extends ArrayObject
 							} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
 								if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
 									$output[] = $childValues;
+								} else {
+									$output[$suffixTagName][] = $childValues; //<-- Missing line
 								}
 							} else {
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
-						} elseif ($childValues) {
-							$output = implode(', ', $childValues); // Possible bug?
+						} elseif ($childValues || $childValues === '0') {
+							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues; // Possible bug?
 						}
 					}
 				}
