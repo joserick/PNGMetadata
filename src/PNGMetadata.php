@@ -83,6 +83,7 @@ class PNGMetadata extends ArrayObject
 	 */
 	private array $prefSuffXMP = ['stRef', 'rdf', 'li', 'Alt', 'stEvt', 'Bag', 'Seq', 'crs'];
 
+
 	/**
 	 * Initializes the functions required for metadata extraction.
 	 *
@@ -206,7 +207,7 @@ class PNGMetadata extends ArrayObject
 	{
 		if (!$path) {
 			throw new \InvalidArgumentException('The argument path is empty', 101);
-		}else if (!file_exists($path)){
+		} elseif (!file_exists($path)) {
 			throw new \InvalidArgumentException('The file path does not exist or it\'s inaccessible', 102);
 		}
 
@@ -241,9 +242,9 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function checkPath(string $path): void
 	{
-		if($this->isPNG($path)){
+		if ($this->isPNG($path)) {
 			$this->path = $path;
-		}else{
+		} else {
 			throw new \InvalidArgumentException('The file path isn\'t PNG', 103);
 		}
 	}
@@ -332,6 +333,7 @@ class PNGMetadata extends ArrayObject
 
 		return array_merge(...$columns);
 	}
+
 
 	/**
 	 * Extract the data chunks more important.
@@ -460,7 +462,6 @@ class PNGMetadata extends ArrayObject
 			$this->metadata['sRBG'] = $rbg[end(...$unpacked)];
 		}
 	}
-
 
 
 	/**
