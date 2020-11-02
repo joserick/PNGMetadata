@@ -33,9 +33,26 @@ use ArrayObject;
  */
 class PNGMetadata extends ArrayObject
 {
+	/**
+	 * The file path PNG
+	 *
+	 * @var string
+	 */
+	private ?string $path;
 
-	/** @var mixed[] */
+	/**
+	 * The list of metadata.
+	 *
+	 * @var mixed[]
+	 */
 	private array $metadata = [];
+
+	/**
+	 * Exif data (jpg) in base64.
+	 *
+	 * @var string
+	 */
+	private string $exif_data = '';
 
 	/**
 	 * The list of data chunks.
@@ -66,10 +83,18 @@ class PNGMetadata extends ArrayObject
 	 */
 	private array $prefSuffXMP = ['stRef', 'rdf', 'li', 'Alt', 'stEvt', 'Bag', 'Seq', 'crs'];
 
-
-	public function __construct(?string $path = null)
+	/**
+	 * Initializes the functions required for metadata extraction.
+	 *
+	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
+	 *
+	 * @param string $path Location of the image in disk.
+	 * @return void
+	 */
+	public function __construct(string $path)
 	{
-		$this->extractChunks($path);
+		$this->checkPath($path);
+		$this->extractChunks();
 		$this->extractXMP();
 		$this->extractTExif();
 		$this->extractExif();
@@ -78,11 +103,16 @@ class PNGMetadata extends ArrayObject
 		$this->extractIHDR();
 		ksort($this->metadata);
 
-		parent:: __construct($this->metadata);
+		parent::__construct($this->metadata);
 	}
 
 
-	/** In case of an error in the extraction of metadata this will return null. */
+	/**
+	 * Return a new PNGMetadata.
+	 *
+	 * @param string $path Location of the image in disk.
+	 * @return PNGMetadata|null
+	 */
 	public static function extract(?string $path = null): ?self
 	{
 		try {
@@ -94,7 +124,11 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
-	 * @return mixed[]
+	 * Return metadata as array.
+	 *
+	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
+	 *
+	 * @return array
 	 */
 	public function toArray(): array
 	{
@@ -104,6 +138,8 @@ class PNGMetadata extends ArrayObject
 
 	/**
 	 * Return a metadata specific.
+	 *
+	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 *
 	 * @param string $string A string with structure, e.g. 'exif:THUMBNAIL:Compression'.
 	 * @return string|mixed[]|null
@@ -123,7 +159,11 @@ class PNGMetadata extends ArrayObject
 	}
 
 
-	/** Return the metadata with a string structura of two colums. */
+	/**
+	 * Return the metadata with a string structura of two colums.
+	 *
+	 * @return string.
+	 */
 	public function __toString(): string
 	{
 		$data = $this->printVertical();
@@ -143,11 +183,79 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Check if file path is a PNG.
+	 *
+	 * @param  string $path Location of the image in disk.
+	 * @return bool
+	 */
+	public static function isPNG(string $path): bool
+	{
+		return self::getType($path) == IMAGETYPE_PNG;
+	}
+
+
+	/**
+	 * Get image type.
+	 *
+	 * @throws \InvalidArgumentException If argument path is empty or if the file path does not exist.
+	 *
+	 * @param  string $path Location of the image in disk.
+	 * @return int|false
+	 */
+	public static function getType(string $path)
+	{
+		if (!$path) {
+			throw new \InvalidArgumentException('The argument path is empty', 101);
+		}else if (!file_exists($path)){
+			throw new \InvalidArgumentException('The file path does not exist or it\'s inaccessible', 102);
+		}
+
+		return exif_imagetype($path);
+	}
+
+
+	/**
+	 * Get thumbnail resource.
+	 *
+	 * @see PNGMetadata::$exif_data Efix data formatted.
+	 *
+	 * @return resource|false
+	 */
+	public function getThumbnail()
+	{
+		if ($this->exif_data) {
+			return imagecreatefromstring(exif_thumbnail($this->exif_data));
+		}
+
+		return false;
+	}
+
+
+	/**
+	 * Check the file path and store it.
+	 *
+	 * @throws \InvalidArgumentException If the file path is not a PNG image.
+	 *
+	 * @param  string $path Location of the image in disk.
+	 * @return void
+	 */
+	private function checkPath(string $path): void
+	{
+		if($this->isPNG($path)){
+			$this->path = $path;
+		}else{
+			throw new \InvalidArgumentException('The file path isn\'t PNG', 103);
+		}
+	}
+
+
+	/**
+	 * Extract metadata from a XML(XMP) as a array.
+	 *
 	 * @param \DOMElement|\DOMNode $node
 	 * @return mixed[]|string
-	 * @see PNGMetadata::extractRDF() To read a xml looking for metadata.
 	 */
-	public function extractNodesXML($node)
+	private function extractNodesXML($node)
 	{
 		$output = [];
 		switch ($node->nodeType) {
@@ -171,13 +279,13 @@ class PNGMetadata extends ArrayObject
 								if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
 									$output[] = $childValues;
 								} else {
-									$output[$suffixTagName][] = $childValues; //<-- Missing line
+									$output[$suffixTagName][] = $childValues;
 								}
 							} else {
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
 						} elseif ($childValues || $childValues === '0') {
-							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues; // Possible bug?
+							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues;
 						}
 					}
 				}
@@ -197,6 +305,8 @@ class PNGMetadata extends ArrayObject
 
 	/**
 	 * Join the metadata keys until they reach their value.
+	 *
+	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 *
 	 * @param string $lastKey Key string from the previous array.
 	 * @param string[]|null $array Value from the previous array that is a array.
@@ -223,12 +333,20 @@ class PNGMetadata extends ArrayObject
 		return array_merge(...$columns);
 	}
 
-
-	private function extractChunks(string $path): void
+	/**
+	 * Extract the data chunks more important.
+	 *
+	 * @see PNGMetadata::$path Location of the image in disk.
+	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 * @throws \InvalidArgumentException If the provided argument is not a PNG image.
+	 *
+	 * @return void
+	 */
+	private function extractChunks(): void
 	{
-		$content = fopen($path, 'rb');
+		$content = fopen($this->path, 'rb');
 		if (fread($content, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
-			throw new \InvalidArgumentException('Invalid PNG file signature, path "' . $path . '" given.');
+			throw new \InvalidArgumentException('Invalid PNG file signature, path "' . $this->path . '" given.', 104);
 		}
 
 		$chunkHeader = fread($content, 8);
@@ -261,8 +379,12 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Extract IHDR type from iHDR chunk as a array.
+	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 *
+	 * @return void
 	 */
 	private function extractIHDR(): void
 	{
@@ -307,8 +429,12 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Extract KGD type from bKGD chunk as a array.
+	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 *
+	 * @return void
 	 */
 	private function extractBKGD(): void
 	{
@@ -319,8 +445,12 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Extract RBG type from sRBG chunk as a array.
+	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 *
+	 * @return void
 	 */
 	private function extractRBG(): void
 	{
@@ -332,16 +462,22 @@ class PNGMetadata extends ArrayObject
 	}
 
 
+
 	/**
+	 * Extract Exif data from eXIf chunk as a array.
+	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 *
+	 * @return void
 	 */
 	private function extractExif(): void
 	{
 		if (isset($this->chunks['eXIf'])) {
+			$this->exif_data = 'data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']);
 			$this->metadata['exif'] = array_replace(
-				$this->metadata['exif'],
-				exif_read_data('data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']))
+				$this->metadata['exif'] ?? [],
+				exif_read_data($this->exif_data)
 			);
 		}
 	}
@@ -352,6 +488,8 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
+	 *
+	 * @return void
 	 */
 	private function extractTExif(): void
 	{
@@ -368,10 +506,13 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Extract XMP data from iTXt chunk as a array.
+	 *
 	 * @throws \Exception If the iTXt chunck has not 'x:xmpmeta' string.
-	 * @see PNGMetadata::extractRDF() To read a xml looking for metadata.
 	 * @see PNGMetadata::$chunks     For the property whose chunks data are storage.
 	 * @see PNGMetadata::$metadata    For the property whose metadata are storage.
+	 *
+	 * @return void
 	 */
 	private function extractXMP(): void
 	{
@@ -395,7 +536,9 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
-	 * @param mixed[] $array
+	 * Extract the properties with the key '0' and insert them in the first level of the array.
+	 *
+	 * @param mixed[] $array Matrix that contains the proprietary.
 	 * @return mixed[]
 	 */
 	private function flatten(array $array): array
@@ -418,6 +561,8 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
+	 * Merge one or more arrays more string concatenation.
+	 *
 	 * @param mixed[] $baseArray Array where the attributes will be inserted.
 	 * @param mixed[] $array Matrix that contains the attributes.
 	 * @return mixed[]
