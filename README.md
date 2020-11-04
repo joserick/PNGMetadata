@@ -113,9 +113,9 @@ if ($thumb !== false) {
 
 ### Is PNG?
 ```php
-if (PNGMetadata::isPNG('./Photo_jpg.png')){
+if (PNGMetadata::isPNG('./Photo_jpg.png')) {
 	echo 'Yes, it is a PNG.';
-}else{
+} else {
 	echo 'No, it is not a PNG.'
 }
 ```
@@ -128,7 +128,7 @@ if (PNGMetadata::isPNG('./Photo_jpg.png')){
 |   IFF(14)  |  WBMP(15)  |  XBM(16) | ICO(17) | WEBP(18) |         |
 
 ```php
-return PNGMetadata::getType('./Photo') == 1 // GIF?
+return PNGMetadata::getType('./Photo') == IMAGETYPE_GIF // GIF?
 ```
 
 ## License

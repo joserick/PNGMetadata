@@ -8,7 +8,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@master
-    
+
     - name: Install PHP
       uses: shivammathur/setup-php@master
       with:

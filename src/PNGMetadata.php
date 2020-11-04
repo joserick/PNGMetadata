@@ -129,7 +129,7 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 *
-	 * @return array
+	 * @return mixed[]
 	 */
 	public function toArray(): array
 	{
@@ -207,7 +207,7 @@ class PNGMetadata extends ArrayObject
 	{
 		if (!$path) {
 			throw new \InvalidArgumentException('The argument path is empty', 101);
-		} elseif (!file_exists($path)) {
+		} elseif (!is_file($path)) {
 			throw new \InvalidArgumentException('The file path does not exist or it\'s inaccessible', 102);
 		}
 
@@ -220,7 +220,7 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$exif_data Efix data formatted.
 	 *
-	 * @return resource|false
+	 * @return resource|null
 	 */
 	public function getThumbnail()
 	{
@@ -228,7 +228,7 @@ class PNGMetadata extends ArrayObject
 			return imagecreatefromstring(exif_thumbnail($this->exif_data));
 		}
 
-		return false;
+		return null;
 	}
 
 
