@@ -167,7 +167,10 @@ class PNGMetadata extends ArrayObject
 								} else {
 									$output = $this->arrayMerge($output, $childValues);
 								}
-							} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
+							} elseif (
+								\in_array($prefixTagName, $this->prefSuffXMP, true)
+								|| \in_array($prefixTagName, $this->tagsXMP, true)
+							) {
 								if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
 									$output[] = $childValues;
 								} else {
@@ -177,7 +180,9 @@ class PNGMetadata extends ArrayObject
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
 						} elseif ($childValues || $childValues === '0') {
-							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues; // Possible bug?
+							$output = is_array($childValues)
+								? implode(', ', $childValues)
+								: (string) $childValues; // Possible bug?
 						}
 					}
 				}
@@ -241,14 +246,19 @@ class PNGMetadata extends ArrayObject
 				$this->chunks[$chunk['type']][] = explode("\0", fread($content, $chunk['size']));
 				fseek($content, 4, SEEK_CUR);
 			} else {
-				if ($chunk['type'] === 'eXIf' || $chunk['type'] === 'sRGB' || $chunk['type'] === 'iTXt' || $chunk['type'] === 'bKGD') {
+				if (
+					$chunk['type'] === 'eXIf'
+					|| $chunk['type'] === 'sRGB'
+					|| $chunk['type'] === 'iTXt'
+					|| $chunk['type'] === 'bKGD'
+				) {
 					$lastOffset = ftell($content);
 					$this->chunks[$chunk['type']] = fread($content, $chunk['size']);
 					fseek($content, $lastOffset, SEEK_SET);
 				} elseif ($chunk['type'] === 'IHDR') {
 					$lastOffset = ftell($content);
 					for ($i = 0; $i < 6; $i++) {
-						$this->chunks[$chunk['type']][] = fread($content, (($i > 1) ? 1 : 4));
+						$this->chunks[$chunk['type']][] = fread($content, ($i > 1 ? 1 : 4));
 					}
 					fseek($content, $lastOffset, SEEK_SET);
 				}
@@ -341,7 +351,7 @@ class PNGMetadata extends ArrayObject
 		if (isset($this->chunks['eXIf'])) {
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'],
-				exif_read_data('data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']))
+				exif_read_data('data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf'])),
 			);
 		}
 	}
@@ -361,7 +371,7 @@ class PNGMetadata extends ArrayObject
 				if ($tag === 'thumbnail') {
 					$tag = strtoupper($tag);
 				}
-				$this->metadata[$group][$tag] = (($tag2) ? [$tag2 => $exif[1]] : $exif[1]);
+				$this->metadata[$group][$tag] = ($tag2 ? [$tag2 => $exif[1]] : $exif[1]);
 			}
 		}
 	}
