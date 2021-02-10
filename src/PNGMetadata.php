@@ -276,7 +276,9 @@ class PNGMetadata extends ArrayObject
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
 						} elseif ($childValues || $childValues === '0') {
-							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues;
+							$output = is_array($childValues)
+								? implode(', ', $childValues)
+								: (string) $childValues;
 						}
 					}
 				}
@@ -463,7 +465,7 @@ class PNGMetadata extends ArrayObject
 			$this->exif_data = 'data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']);
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'] ?? [],
-				exif_read_data($this->exif_data)
+				exif_read_data($this->exif_data),
 			);
 		}
 	}
