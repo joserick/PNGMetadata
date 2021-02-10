@@ -1,4 +1,4 @@
-﻿Welcome to PNGMetadata!
+Welcome to PNGMetadata!
 =======================
 
 PNGMetadata is a library which is able to extract the metadata of an image in png format.
@@ -54,7 +54,7 @@ $metadata_array = PNGMetadata::extract('Photo.png')->toArray(); // return simple
 
 ## Examples
 
-### Example 1
+### Example 1 - All
 
 Print all the metadata.
 
@@ -72,7 +72,7 @@ Out:
 | exif:MimeType | image/png |
 | ... | ... |
 
-### Example 2
+### Example 2 - Get Metadata
 
 Get specific metadata.
 
@@ -81,7 +81,7 @@ $png_metadata = new PNGMetadata(___DIR___.'/Photo.png');
 echo $png_metadata->get('exif:DateTime'); // Return a value, a array or false.
 ```
 
-### Example 3
+### Example 3 - Types
 
 Print the metadata types (IHDR, SRBG, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
 
@@ -93,6 +93,43 @@ $png_metadata = PNGMetadata::extract('./Path/Photo.png');
 foreach($png_metadata as $key => $value){
 	echo $key . "<br>"; // Metadata types
 }
+```
+
+## Extras Functions
+
+### Get the thumbnail stored in the metadata!
+```php
+$png_metadata = new PNGMetadata('../Photo.png');
+// or
+$png_metadata = PNGMetadata::extract('../Photo.png');
+
+$thumb = $png_metadata->getThumbnail();
+
+if ($thumb !== false) {
+	header('Content-Type: image/png');
+	imagepng($thumb);
+	imagedestroy($thumb);
+}
+```
+
+### Is PNG?
+```php
+if (PNGMetadata::isPNG('./Photo_jpg.png')){
+	echo 'Yes, it is a PNG.';
+}else{
+	echo 'No, it is not a PNG.'
+}
+```
+
+### What type?
+|            |            |          |         |          |         |
+|:----------:|:----------:|:--------:|:-------:|:--------:|:-------:|
+|   GIF(1)   |   JPEG(2)  |  PNG (3) |  SWF(4) |  PSD(5)  |  BMP(6) |
+| TIFF_II(7) | TIFF_MM(8) | JP2 (10) | JPX(11) |  JB2(12) | SWC(13) |
+|   IFF(14)  |  WBMP(15)  |  XBM(16) | ICO(17) | WEBP(18) |         |
+
+```php
+return PNGMetadata::getType('./Photo') == 1 // GIF?
 ```
 
 ## License
