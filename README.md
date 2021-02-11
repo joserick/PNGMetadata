@@ -1,4 +1,5 @@
-# Welcome to PNGMetadata!
+Welcome to PNGMetadata!
+=======================
 
 PNGMetadata is a library which is able to extract the metadata of an image in png format.
 

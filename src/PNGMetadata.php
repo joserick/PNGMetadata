@@ -33,11 +33,7 @@ use ArrayObject;
  */
 class PNGMetadata extends ArrayObject
 {
-	/**
-	 * The file path PNG
-	 *
-	 * @var string
-	 */
+	/** The file path PNG */
 	private ?string $path;
 
 	/**
@@ -47,11 +43,7 @@ class PNGMetadata extends ArrayObject
 	 */
 	private array $metadata = [];
 
-	/**
-	 * Exif data (jpg) in base64.
-	 *
-	 * @var string
-	 */
+	/** Exif data (jpg) in base64. */
 	private string $exif_data = '';
 
 	/**
@@ -90,7 +82,6 @@ class PNGMetadata extends ArrayObject
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 *
 	 * @param string $path Location of the image in disk.
-	 * @return void
 	 */
 	public function __construct(string $path)
 	{
@@ -162,8 +153,6 @@ class PNGMetadata extends ArrayObject
 
 	/**
 	 * Return the metadata with a string structura of two colums.
-	 *
-	 * @return string.
 	 */
 	public function __toString(): string
 	{
@@ -187,7 +176,6 @@ class PNGMetadata extends ArrayObject
 	 * Check if file path is a PNG.
 	 *
 	 * @param  string $path Location of the image in disk.
-	 * @return bool
 	 */
 	public static function isPNG(string $path): bool
 	{
@@ -238,7 +226,6 @@ class PNGMetadata extends ArrayObject
 	 * @throws \InvalidArgumentException If the file path is not a PNG image.
 	 *
 	 * @param  string $path Location of the image in disk.
-	 * @return void
 	 */
 	private function checkPath(string $path): void
 	{
@@ -276,7 +263,10 @@ class PNGMetadata extends ArrayObject
 								} else {
 									$output = $this->arrayMerge($output, $childValues);
 								}
-							} elseif (\in_array($prefixTagName, $this->prefSuffXMP, true) || \in_array($prefixTagName, $this->tagsXMP, true)) {
+							} elseif (
+								\in_array($prefixTagName, $this->prefSuffXMP, true)
+								|| \in_array($prefixTagName, $this->tagsXMP, true)
+							) {
 								if (\in_array($suffixTagName, $this->prefSuffXMP, true)) {
 									$output[] = $childValues;
 								} else {
@@ -286,7 +276,9 @@ class PNGMetadata extends ArrayObject
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
 						} elseif ($childValues || $childValues === '0') {
-							$output = is_array($childValues) ? implode(', ', $childValues) : (string) $childValues;
+							$output = is_array($childValues)
+								? implode(', ', $childValues)
+								: (string) $childValues;
 						}
 					}
 				}
@@ -341,8 +333,6 @@ class PNGMetadata extends ArrayObject
 	 * @see PNGMetadata::$path Location of the image in disk.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
 	 * @throws \InvalidArgumentException If the provided argument is not a PNG image.
-	 *
-	 * @return void
 	 */
 	private function extractChunks(): void
 	{
@@ -361,14 +351,19 @@ class PNGMetadata extends ArrayObject
 				$this->chunks[$chunk['type']][] = explode("\0", fread($content, $chunk['size']));
 				fseek($content, 4, SEEK_CUR);
 			} else {
-				if ($chunk['type'] === 'eXIf' || $chunk['type'] === 'sRGB' || $chunk['type'] === 'iTXt' || $chunk['type'] === 'bKGD') {
+				if (
+					$chunk['type'] === 'eXIf'
+					|| $chunk['type'] === 'sRGB'
+					|| $chunk['type'] === 'iTXt'
+					|| $chunk['type'] === 'bKGD'
+				) {
 					$lastOffset = ftell($content);
 					$this->chunks[$chunk['type']] = fread($content, $chunk['size']);
 					fseek($content, $lastOffset, SEEK_SET);
 				} elseif ($chunk['type'] === 'IHDR') {
 					$lastOffset = ftell($content);
 					for ($i = 0; $i < 6; $i++) {
-						$this->chunks[$chunk['type']][] = fread($content, (($i > 1) ? 1 : 4));
+						$this->chunks[$chunk['type']][] = fread($content, ($i > 1 ? 1 : 4));
 					}
 					fseek($content, $lastOffset, SEEK_SET);
 				}
@@ -385,8 +380,6 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
-	 *
-	 * @return void
 	 */
 	private function extractIHDR(): void
 	{
@@ -435,8 +428,6 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
-	 *
-	 * @return void
 	 */
 	private function extractBKGD(): void
 	{
@@ -451,8 +442,6 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
-	 *
-	 * @return void
 	 */
 	private function extractRBG(): void
 	{
@@ -469,8 +458,6 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
-	 *
-	 * @return void
 	 */
 	private function extractExif(): void
 	{
@@ -478,7 +465,7 @@ class PNGMetadata extends ArrayObject
 			$this->exif_data = 'data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']);
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'] ?? [],
-				exif_read_data($this->exif_data)
+				exif_read_data($this->exif_data),
 			);
 		}
 	}
@@ -489,8 +476,6 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
-	 *
-	 * @return void
 	 */
 	private function extractTExif(): void
 	{
@@ -500,7 +485,7 @@ class PNGMetadata extends ArrayObject
 				if ($tag === 'thumbnail') {
 					$tag = strtoupper($tag);
 				}
-				$this->metadata[$group][$tag] = (($tag2) ? [$tag2 => $exif[1]] : $exif[1]);
+				$this->metadata[$group][$tag] = ($tag2 ? [$tag2 => $exif[1]] : $exif[1]);
 			}
 		}
 	}
@@ -512,8 +497,6 @@ class PNGMetadata extends ArrayObject
 	 * @throws \Exception If the iTXt chunck has not 'x:xmpmeta' string.
 	 * @see PNGMetadata::$chunks     For the property whose chunks data are storage.
 	 * @see PNGMetadata::$metadata    For the property whose metadata are storage.
-	 *
-	 * @return void
 	 */
 	private function extractXMP(): void
 	{
