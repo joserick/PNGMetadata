@@ -448,7 +448,7 @@ class PNGMetadata extends ArrayObject
 		if (isset($this->chunks['sRGB'])) {
 			$rbg = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
 			$unpacked = unpack('C', $this->chunks['sRGB']);
-			$this->metadata['sRBG'] = $rbg[end(...$unpacked)];
+			$this->metadata['sRBG'] = $rbg[end($unpacked)] ?? 'Unknown';
 		}
 	}
 
