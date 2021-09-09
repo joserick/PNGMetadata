@@ -26,7 +26,7 @@ use ArrayObject;
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * PNG Metadata class for extraction of XMP, TEXIF, EXIF, BKGD, RBG and IHDR.
+ * PNG Metadata class for extraction of XMP, TEXIF, EXIF, BKGD, sRGB and IHDR.
  *
  * Returns the complete information found in the different types
  * of metadata within a PNG format image.
@@ -91,7 +91,7 @@ class PNGMetadata extends ArrayObject
 		$this->extractTExif();
 		$this->extractExif();
 		$this->extractBKGD();
-		$this->extractRBG();
+		$this->extractRGB();
 		$this->extractIHDR();
 		ksort($this->metadata);
 
@@ -438,17 +438,17 @@ class PNGMetadata extends ArrayObject
 
 
 	/**
-	 * Extract RBG type from sRBG chunk as a array.
+	 * Extract RGB type from sRGB chunk as a array.
 	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
 	 */
-	private function extractRBG(): void
+	private function extractRGB(): void
 	{
 		if (isset($this->chunks['sRGB'])) {
-			$rbg = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
+			$rgb = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
 			$unpacked = unpack('C', $this->chunks['sRGB']);
-			$this->metadata['sRBG'] = $rbg[end(...$unpacked)];
+			$this->metadata['sRGB'] = $rgb[end($unpacked)] ?? 'Unknown';
 		}
 	}
 

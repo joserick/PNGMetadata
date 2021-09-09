@@ -83,7 +83,7 @@ echo $png_metadata->get('exif:DateTime'); // Return a value, a array or false.
 
 ### Example 3 - Types
 
-Print the metadata types (IHDR, SRBG, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
+Print the metadata types (IHDR, sRGB, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
 
 ```php
 $png_metadata = new PNGMetadata('./Path/Photo.png');
