@@ -43,8 +43,12 @@ class PNGMetadata extends ArrayObject
 	 */
 	private array $metadata = [];
 
-	/** Exif data (jpg) in base64. */
-	private string $exif_data = '';
+	/**
+	 * Exif data (jpg) in in a memory stream..
+	 *
+	 * @var resource
+	 */
+	private $exif_data;
 
 	/**
 	 * The list of data chunks.
@@ -213,7 +217,10 @@ class PNGMetadata extends ArrayObject
 	public function getThumbnail()
 	{
 		if ($this->exif_data) {
-			return imagecreatefromstring(exif_thumbnail($this->exif_data));
+			$image = imagecreatefromstring(exif_thumbnail($this->exif_data));
+			rewind($this->exif_data);
+
+			return $image;
 		}
 
 		return false;
@@ -462,11 +469,16 @@ class PNGMetadata extends ArrayObject
 	private function extractExif(): void
 	{
 		if (isset($this->chunks['eXIf'])) {
-			$this->exif_data = 'data://image/jpeg;base64,' . base64_encode($this->chunks['eXIf']);
+			$this->exif_data = fopen('php://memory', 'r+b');
+			fwrite($this->exif_data, $this->chunks['eXIf']);
+			rewind($this->exif_data);
+
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'] ?? [],
 				exif_read_data($this->exif_data),
 			);
+
+			rewind($this->exif_data);
 		}
 	}
 
