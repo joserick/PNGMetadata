@@ -12,6 +12,7 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 - PHP >= 7.4
 - XML PHP Extension
 - JSON PHP Extension
+- GD PHP Extension
 - EXIF PHP Extension
 
 ## Installation

@@ -4,15 +4,10 @@ declare(strict_types=1);
 
 namespace PNGMetadata;
 
-
 use ArrayObject;
 
 /**
  * PNG Metadata.
- *
- * @author <joserick.92@gmail.com> José Erick Carreón Gómez
- * @copyright (c) 2019 José Erick Carreón Gómez
- * @license http://www.gnu.org/licenses/gpl-3.0.html GNU Public Licence (GPLv3)
  *
  * This file is part of photo-metadata.
  *
@@ -46,7 +41,7 @@ class PNGMetadata extends ArrayObject
 	/**
 	 * Exif data (jpg) in in a memory stream..
 	 *
-	 * @var resource
+	 * @var resource|null
 	 */
 	private $exif_data;
 
@@ -212,17 +207,25 @@ class PNGMetadata extends ArrayObject
 	 *
 	 * @see PNGMetadata::$exif_data Efix data formatted.
 	 *
-	 * @return resource|false
+	 * @return \GdImage|false
 	 */
 	public function getThumbnail()
 	{
+        // Check if the Exif data is not null.
 		if ($this->exif_data) {
-			$image = imagecreatefromstring(exif_thumbnail($this->exif_data));
-			rewind($this->exif_data);
+			// Check if the Exif data contains a thumbnail
+			if ($thumb = exif_thumbnail($this->exif_data)) {
+				// Create an image resource from the thumbnail data
+				$image = imagecreatefromstring($thumb);
 
-			return $image;
+				// Rewind the Exif data to the beginning
+				rewind($this->exif_data);
+
+				return $image;
+			}
 		}
 
+		// No thumbnail found or error occurred
 		return false;
 	}
 
@@ -475,7 +478,7 @@ class PNGMetadata extends ArrayObject
 
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'] ?? [],
-				exif_read_data($this->exif_data),
+				exif_read_data($this->exif_data, null, true),
 			);
 
 			rewind($this->exif_data);
