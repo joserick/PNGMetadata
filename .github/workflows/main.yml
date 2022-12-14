@@ -20,7 +20,7 @@ jobs:
         composer create-project nette/coding-standard temp/coding-standard ^3 --no-progress
 
         # Install app deps
-        composer install --no-interaction --prefer-dist
+        composer install --no-interaction --prefer-dist --ignore-platform-req=ext-gd
 
     - name: The PHP Security Checker
       uses: symfonycorp/security-checker-action@v5

@@ -211,7 +211,7 @@ class PNGMetadata extends ArrayObject
 	 */
 	public function getThumbnail()
 	{
-        // Check if the Exif data is not null.
+		// Check if the Exif data is not null.
 		if ($this->exif_data) {
 			// Check if the Exif data contains a thumbnail
 			if ($thumb = exif_thumbnail($this->exif_data)) {
@@ -516,7 +516,7 @@ class PNGMetadata extends ArrayObject
 	private function extractXMP(): void
 	{
 		if (isset($this->chunks['iTXt']) && strncmp($this->chunks['iTXt'], 'XML:com.adobe.xmp', 17) === 0) {
-			$dom = new \DomDocument('1.0', 'UTF-8');
+			$dom = new \DOMDocument('1.0', 'UTF-8');
 			$dom->preserveWhiteSpace = false;
 			$dom->formatOutput = false;
 			$dom->substituteEntities = false;
