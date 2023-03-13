@@ -262,6 +262,7 @@ class PNGMetadata extends ArrayObject
 					$child = $node->childNodes->item($i);
 					if ($child !== null) {
 						$childValues = $this->extractNodesXML($child);
+						// if the node has a tag name, it is not a text node
 						if (isset($child->tagName)) {
 							[$prefixTagName, $suffixTagName] = explode(':', $child->tagName);
 							if (is_array($childValues)) {
@@ -273,6 +274,8 @@ class PNGMetadata extends ArrayObject
 								} else {
 									$output = $this->arrayMerge($output, $childValues);
 								}
+							// if the node has a prefix and the prefix is in the list of prefixes, it is a XMP tag
+							// if the node has a suffix and the suffix is in the list of suffixes, it is a XMP tag
 							} elseif (
 								\in_array($prefixTagName, $this->prefSuffXMP, true)
 								|| \in_array($prefixTagName, $this->tagsXMP, true)
@@ -282,9 +285,11 @@ class PNGMetadata extends ArrayObject
 								} else {
 									$output[$suffixTagName][] = $childValues;
 								}
+							// if the node has a prefix and the prefix is not in the list of prefixes, it is not a XMP tag
 							} else {
 								$output[$prefixTagName][$suffixTagName][] = $childValues;
 							}
+						// if the node does not have a tag name, it is a text node
 						} elseif ($childValues || $childValues === '0') {
 							$output = is_array($childValues)
 								? implode(', ', $childValues)
@@ -317,22 +322,32 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function printVertical(string $lastKey = '', ?array $array = null): array
 	{
+		// Create a new array to store the result.
 		$columns = [];
+
+		// If the key is not empty, add a colon to the end of the key.
 		if ($lastKey !== '') {
 			$lastKey .= ':';
 		}
+
+		// Traverse the array.
 		foreach ($array ?: $this->metadata as $key => $value) {
+			// If the value is a array, call the function recursively.
 			if (is_array($value)) {
+				// If the value is an indexed array, merge the key and value together.
 				if (isset($value[0])) {
 					$columns[] = [$lastKey . $key => implode(',', $value)];
 				} else {
+					// If the value is a associative array, call the function recursively.
 					$columns[] = $this->printVertical($lastKey . $key, $value);
 				}
 			} else {
+				// If the value is not an array, merge the key and value together.
 				$columns[] = [$lastKey . $key => $value];
 			}
 		}
 
+		// Return the merged result.
 		return array_merge(...$columns);
 	}
 
@@ -346,18 +361,26 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function extractChunks(): void
 	{
+		// Open the image file in binary mode.
 		$content = fopen($this->path, 'rb');
+
+		// Verify that the file is a PNG file.
 		if (fread($content, 8) !== "\x89PNG\x0d\x0a\x1a\x0a") {
 			throw new \InvalidArgumentException('Invalid PNG file signature, path "' . $this->path . '" given.', 104);
 		}
 
+		// The PNG image is composed of a series of chunks. Each chunk is composed of
+		// a 4-byte length, a 4-byte type, a variable number of data bytes, and a
+		// 4-byte CRC.
 		$chunkHeader = fread($content, 8);
 		while ($chunkHeader) {
 			$chunk = unpack('Nsize/a4type', $chunkHeader);
 			if ($chunk['type'] === 'IEND') {
 				break;
 			}
+			// Read the chunk data.
 			if ($chunk['type'] === 'tEXt') {
+				// For the tEXt chunk, the data is a keyword and a text string.
 				$this->chunks[$chunk['type']][] = explode("\0", fread($content, $chunk['size']));
 				fseek($content, 4, SEEK_CUR);
 			} else {
@@ -367,10 +390,13 @@ class PNGMetadata extends ArrayObject
 					|| $chunk['type'] === 'iTXt'
 					|| $chunk['type'] === 'bKGD'
 				) {
+					// For the eXIf, sRGB, iTXt, and bKGD chunks, the data is a byte
+					// sequence.
 					$lastOffset = ftell($content);
 					$this->chunks[$chunk['type']] = fread($content, $chunk['size']);
 					fseek($content, $lastOffset, SEEK_SET);
 				} elseif ($chunk['type'] === 'IHDR') {
+					// For the IHDR chunk, the data is a series of fields.
 					$lastOffset = ftell($content);
 					for ($i = 0; $i < 6; $i++) {
 						$this->chunks[$chunk['type']][] = fread($content, ($i > 1 ? 1 : 4));
@@ -394,6 +420,7 @@ class PNGMetadata extends ArrayObject
 	private function extractIHDR(): void
 	{
 		if (isset($this->chunks['IHDR'])) {
+			// Create a array that will be used to associate the chunk data with the corresponding metadata name.
 			$ihdr = [
 				'ImageWidth',
 				'ImageHeight',
@@ -418,14 +445,20 @@ class PNGMetadata extends ArrayObject
 				],
 			];
 
+			// Loop through each chunk data.
 			foreach ($this->chunks['IHDR'] as $key => $value) {
+				// Check if the current chunk data is not the first two bytes of the chunk.
 				if ($key > 1) {
+					// Check if the current chunk data is the third byte of the chunk.
 					if ($key === 2) {
+						// Add the metadata name (in the $ihdr array) corresponding to the chunk data and the value of the chunk data.
 						$this->metadata['IHDR'][$ihdr[$key]] = ord($value);
 					} else {
+						// Add the metadata name (in the $ihdr array) corresponding to the chunk data and the value of the chunk data.
 						$this->metadata['IHDR'][$ihdr[$key][8]] = $ihdr[$key][ord($value)];
 					}
 				} else {
+					// Add the metadata name (in the $ihdr array) corresponding to the chunk data and the value of the chunk data.
 					$this->metadata['IHDR'][$ihdr[$key]] = unpack('Ni', $value)['i'];
 				}
 			}
@@ -436,12 +469,19 @@ class PNGMetadata extends ArrayObject
 	/**
 	 * Extract KGD type from bKGD chunk as a array.
 	 *
+	 * The format of bKGD chunk is:
+	 *  - For indexed-color images: 1 byte.
+	 *  - For grayscale images: 2 bytes.
+	 *  - For truecolor images: 6 bytes.
+	 *
 	 * @see PNGMetadata::$metadata For the property whose metadata are storage.
 	 * @see PNGMetadata::$chunks For the property whose chunks data are storage.
 	 */
 	private function extractBKGD(): void
 	{
 		if (isset($this->chunks['bKGD'])) {
+			// If the length of bKGD chunk is less than 2, it is an indexed-color images.
+			// Otherwise it is a grayscale or truecolor images.
 			$this->metadata['bKGD'] = implode(' ', unpack(strlen($this->chunks['bKGD']) < 2 ? 'C' : 'n*', $this->chunks['bKGD']));
 		}
 	}
@@ -456,8 +496,11 @@ class PNGMetadata extends ArrayObject
 	private function extractRGB(): void
 	{
 		if (isset($this->chunks['sRGB'])) {
+			// $rgb is an array with 4 possible values
 			$rgb = ['Perceptual', 'Relative Colorimetric', 'Saturation', 'Absolute Colorimetric'];
+			// Unpack the sRGB chunk data as a byte
 			$unpacked = unpack('C', $this->chunks['sRGB']);
+			// Set the sRGB value to the value of $rgb that matches the byte
 			$this->metadata['sRGB'] = $rgb[end($unpacked)] ?? 'Unknown';
 		}
 	}
@@ -471,16 +514,22 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function extractExif(): void
 	{
+		// Check if eXIf chunk exists.
 		if (isset($this->chunks['eXIf'])) {
+			// Open eXIf chunk data as a memory stream.
 			$this->exif_data = fopen('php://memory', 'r+b');
+			// Write eXIf chunk data to the memory stream.
 			fwrite($this->exif_data, $this->chunks['eXIf']);
+			// Set the pointer of memory stream to the beginning of the stream.
 			rewind($this->exif_data);
 
+			// Read Exif data from memory stream.
 			$this->metadata['exif'] = array_replace(
 				$this->metadata['exif'] ?? [],
 				exif_read_data($this->exif_data, null, true),
 			);
 
+			// Set the pointer of memory stream to the beginning of the stream.
 			rewind($this->exif_data);
 		}
 	}
@@ -494,12 +543,21 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function extractTExif(): void
 	{
+		// Check if the tEXt chunk is present in the PNG file.
 		if (isset($this->chunks['tEXt']) && is_array($this->chunks['tEXt'])) {
+
+			// Loop over all tEXt chunks.
 			foreach ($this->chunks['tEXt'] as $exif) {
+
+				// Split the key into parts.
 				[$group, $tag, $tag2] = array_pad(explode(':', $exif[0]), 3, null);
+
+				// Convert the thumbnail key to uppercase.
 				if ($tag === 'thumbnail') {
 					$tag = strtoupper($tag);
 				}
+
+				// Store the value in the metadata array.
 				$this->metadata[$group][$tag] = ($tag2 ? [$tag2 => $exif[1]] : $exif[1]);
 			}
 		}
@@ -516,18 +574,27 @@ class PNGMetadata extends ArrayObject
 	private function extractXMP(): void
 	{
 		if (isset($this->chunks['iTXt']) && strncmp($this->chunks['iTXt'], 'XML:com.adobe.xmp', 17) === 0) {
+			// create a new DOMDocument instance
 			$dom = new \DOMDocument('1.0', 'UTF-8');
+			// set the preserveWhiteSpace property to false to remove white space
 			$dom->preserveWhiteSpace = false;
+			// set the formatOutput property to false to remove extra line breaks
 			$dom->formatOutput = false;
+			// set the substituteEntities property to false to prevent entity substitution
 			$dom->substituteEntities = false;
+			// load the XML data from the string
 			$dom->loadXML(ltrim(substr($this->chunks['iTXt'], 17), "\x00"));
+			// set the encoding to UTF-8
 			$dom->encoding = 'UTF-8';
+			// check if the root node of the XML document is of type x:xmpmeta
 			if ($dom->documentElement->nodeName !== 'x:xmpmeta') {
 				error_log('ExtractRoot node must be of type x:xmpmeta.');
 
 				return;
 			}
+			// extract the metadata from the XML document
 			if (!empty($result = $this->flatten($this->extractNodesXML($dom->documentElement)))) {
+				// store the metadata in the PNGMetadata::$metadata property
 				$this->metadata['xmp'] = $result;
 			}
 		}
@@ -542,14 +609,20 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function flatten(array $array): array
 	{
+		// Loop through each key in the array
 		foreach ($array as $key => $value) {
+			// If the value is an array
 			if (is_array($value)) {
+				// If the array has only one key, and that key is 0
 				if (isset($value[0]) && \count($value) === 1) {
+					// Set the value of this key to be the value of key 0
 					$array[$key] = $value[0];
+					// If the new value is an array, call flatten again to flatten it
 					if (is_array($array[$key])) {
 						$array[$key] = $this->flatten($array[$key]);
 					}
 				} else {
+					// If the array doesn't have only one key, call flatten again to flatten it
 					$array[$key] = $this->flatten($value);
 				}
 			}
@@ -568,17 +641,24 @@ class PNGMetadata extends ArrayObject
 	 */
 	private function arrayMerge(array $baseArray, array $array): array
 	{
+		// Loop through the array to be merged.
 		foreach ($array as $key => $value) {
+			// If the value is an object, get the value of the object.
 			if (is_object($value)) {
 				$value = $value->value;
 			}
+
+			// If the key already exists in the base array, merge the values.
 			if (isset($baseArray[$key])) {
+				// If the value is an array, merge the arrays.
 				if (is_array($value)) {
 					$baseArray[$key] = $this->arrayMerge($baseArray[$key], $array[$key]);
 				} elseif ($baseArray[$key] !== $value) {
+					// If the value is not an array, concatenate the values.
 					$baseArray[$key] .= ',' . $value;
 				}
 			} else {
+				// If the key does not exist, create the key and set the value.
 				$baseArray[$key] = $value;
 			}
 		}
