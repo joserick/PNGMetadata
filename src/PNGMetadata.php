@@ -558,7 +558,7 @@ class PNGMetadata extends ArrayObject
 				}
 
 				// Store the value in the metadata array.
-				$this->metadata[$group][$tag] = ($tag2 ? [$tag2 => $exif[1]] : $exif[1]);
+				$this->metadata[$group][$tag ?? ''] = ($tag2 ? [$tag2 => $exif[1]] : $exif[1]);
 			}
 		}
 	}
