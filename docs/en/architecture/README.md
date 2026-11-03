@@ -7,8 +7,8 @@ lang: en-US
 
 This section explains how the PNGMetadata code is organized and why it was designed that way.
 
-- [Layered architecture](/en/architecture/architecture.html) — the three layers and the dependency rule.
-- [Public API](/en/architecture/api.html) — the two ways to use the library (v1 and v2).
+- [Layered architecture](/en/architecture/architecture.html) — the two layers and the dependency rule.
+- [Public API](/en/architecture/api.html) — the typed API of the library.
 
 ## The idea in one sentence
 

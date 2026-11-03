@@ -5,14 +5,10 @@ lang: es-ES
 
 # Arquitectura en capas
 
-PNGMetadata se divide en **tres capas**, con una regla estricta: **las dependencias apuntan hacia adentro** (de fuera a dentro). Cada capa solo conoce a las que están por debajo de ella.
+PNGMetadata se organiza en **dos capas más un punto de entrada tipado**, con una regla estricta: **las dependencias apuntan hacia adentro** (de fuera a dentro). Cada capa solo conoce a las que están por debajo de ella.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ CAPA 3 · Fachada (compatibilidad)                          │
-│   PNGMetadata.php            extiende ArrayObject (API v1) │
-│   LegacyArrayFormatter.php   modelo → array estilo v1      │
-├────────────────────────────────────────────────────────────┤
 │ CAPA 2 · Dominio (modelo tipado, SIN I/O)                  │
 │   Metadata/   MetadataDocument, HeaderData, TextEntry,     │
 │               BackgroundColor, enums {ColorType, ...}      │
@@ -59,12 +55,6 @@ enum ColorType: int {
     case RGBWithAlpha = 6;
 }
 ```
-
-## Capa 3: Fachada — compatibilidad con v1
-
-La librería original (v1) exponía un array anidado de fácil consumo, pero poco tipado. Para no romper a los usuarios existentes, la fachada `PNGMetadata` **reproduce exactamente** esa estructura de array.
-
-`LegacyArrayFormatter` es el traductor: recibe el `MetadataDocument` tipado y lo convierte al array v1.
 
 ## Los decoders: el patrón clave
 
@@ -114,10 +104,7 @@ ChunkDecoderRegistry ──► el decoder del tipo decodifica (con contexto IHDR
 MetadataBuilder ───► acumulador mutable durante el recorrido
    │
    ▼
-MetadataDocument ──► modelo inmutable tipado  ◄── API nueva (PngMetadataReader::read)
-   │
-   ▼
-LegacyArrayFormatter ──► array estilo v1      ◄── API v1 (fachada PNGMetadata)
+MetadataDocument ──► modelo inmutable tipado  ◄── la única API pública (PngMetadataReader::read)
 ```
 
 ### El contexto IHDR

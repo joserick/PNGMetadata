@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - Unreleased
 
-Version 2 is a ground-up rewrite on a layered architecture, while preserving the
-v1 public API so existing consumers upgrade without code changes.
+Version 2 is a ground-up rewrite on a layered architecture with a typed,
+immutable API. This is a **breaking release**: the v1 `PNGMetadata` array
+facade is removed and the typed core (`PngMetadataReader` → `MetadataDocument`)
+is the only public API. The v1→v2 migration map lives in the README
+("Upgrading from v1"); the `1.x` line remains available for legacy consumers.
 
 ### Added
 
@@ -34,8 +37,6 @@ v1 public API so existing consumers upgrade without code changes.
 ### Changed
 
 - **BREAKING**: minimum PHP version raised from `^7.4 || ^8.0` to `^8.3`.
-- `ext-gd` moved from `require` to `suggest`; only `PNGMetadata::getThumbnail()`
-  needs it. The core returns the embedded thumbnail as a binary string.
 - Declared the previously-implicit `ext-xml`, `ext-mbstring`, and `ext-zlib`
   requirements.
 - Replaced the abandoned PHPStan 0.12 stack (phpstan-nette, disallowed-calls)
@@ -51,7 +52,6 @@ v1 public API so existing consumers upgrade without code changes.
   `MM\0*`) before decoding, as recommended by the PNG spec.
 - iTXt parsing no longer relies on null-byte trimming (which corrupted
   compressed XMP packets); it parses the chunk positionally per spec.
-- `__toString()` no longer throws on an empty metadata set.
 - Truncated datastreams and short reads now raise a domain exception instead of
   emitting partial data.
 - The single-instance rule for the eXIf chunk is enforced (first one wins).
@@ -62,13 +62,18 @@ v1 public API so existing consumers upgrade without code changes.
 
 ### Removed
 
-- None from the public API. The internal monolith was replaced; code that
-  extended the old class's internals will need to target the new layers.
-
-### Notes on output parity
-
-- The v1 legacy array is reproduced exactly, including a v1 quirk: the `IHDR`
-  group omits the `Interlace` key (v1 read 6 of the 7 IHDR fields). The interlace
-  method is available on the typed core via `$document->header?->interlaceMethod`.
+- **BREAKING**: the `PNGMetadata` facade (`src/PNGMetadata.php`) and its entire
+  v1 surface: `ArrayObject` inheritance, `extract()`, the legacy `toArray()`
+  shape, colon-path `get('a:b:c')`, `__toString()` two-column rendering,
+  `getThumbnail()` (returns `\GdImage`), `isPNG()`, `getType()`, and the
+  `InvalidArgumentException` codes 101/102/103. Use
+  `PngMetadataReader::create()->read()` with the typed exceptions and recipes
+  from the README migration guide.
+- **BREAKING**: `LegacyArrayFormatter` and the v1 output-parity contract,
+  including the legacy `IHDR` quirk that omitted the `Interlace` key. The typed
+  document always exposes `header->interlaceMethod`.
+- **BREAKING**: all GD coupling. `ext-gd` no longer appears in the package
+  (the `suggest` entry is gone); embedded thumbnails are served as bytes via
+  `MetadataDocument::thumbnailBytes()`.
 
 [2.0.0]: https://github.com/joserick/PNGMetadata/compare/v1.0.0...v2.0.0

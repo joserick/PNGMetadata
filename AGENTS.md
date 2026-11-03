@@ -23,21 +23,17 @@ without external tools like ExifTool.
 
 - **PHP `^8.3`** (enums, readonly classes, typed constants). CI runs 8.3 / 8.4 / 8.5.
 - **Required extensions:** `ext-exif`, `ext-mbstring`, `ext-xml`, `ext-zlib`.
-- **Optional:** `ext-gd` — only `PNGMetadata::getThumbnail()` needs it (declared in
-  `suggest`, not `require`).
+- **No optional extensions:** GD was removed entirely in 2.0.0 (embedded
+  thumbnails are returned as bytes by the typed core).
 - **Dev:** PHPUnit 11, PHPStan 2 (level **max**), `roave/security-advisories`.
 - **Normative reference:** PNG Specification, Third Edition (W3C Recommendation,
   2025-06-24). When in doubt about a chunk, the spec is the source of truth.
 
-## 3. Architecture (three layers, dependency rule points inward)
+## 3. Architecture (two layers + typed entry point, dependency rule points inward)
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ Facade (compatibility)                                     │
-│   src/PNGMetadata.php          extends ArrayObject (v1 API)│
-│   src/LegacyArrayFormatter.php domain → v1 array shape     │
-├────────────────────────────────────────────────────────────┤
-│ Domain (typed model, NO I/O, NO GD, NO ext-exif calls)     │
+│ Domain (typed model, NO I/O, NO GD)                        │
 │   src/Metadata/  MetadataDocument, HeaderData, TextEntry,  │
 │                  BackgroundColor, enums {ColorType,        │
 │                  InterlaceMethod, RenderingIntent}         │
@@ -60,8 +56,7 @@ input (path|string|stream)
   → PngReader             signature check + chunk framing → yields RawChunk (lazy payload)
   → ChunkDecoderRegistry  per-type decoder(rawChunk, DecodingContext, MetadataBuilder)
   → MetadataBuilder       mutable accumulator, frozen at end
-  → MetadataDocument      immutable typed model   ← public new API (PngMetadataReader::read)
-  → LegacyArrayFormatter  → v1 array shape        ← public v1 API (PNGMetadata facade)
+  → MetadataDocument      immutable typed model   ← the public API (PngMetadataReader::read)
 ```
 
 ### Key design decisions (do not regress these)
@@ -80,28 +75,28 @@ input (path|string|stream)
   iTXt text is UTF-8 and is **not** null-terminated (length comes from chunk length) —
   parse it positionally, never by null-trimming the whole payload.
 
-## 4. Public API (v1, preserved — do not break)
+## 4. Public API (typed, v2 — the only API)
 
-`PNGMetadata extends ArrayObject`:
-- `__construct(string $path)` — throws `InvalidArgumentException` (codes 101 empty,
-  102 missing, 103 not-PNG).
-- `PNGMetadata::extract(?string $path): ?self` — never throws, `null` on failure.
-- `toArray(): array` — legacy grouped array, `ksort`ed.
-- `get('a:b:c')` — colon-path access, `null` when missing. Returns raw stored scalars.
-- `__toString()` — two-column table, `<pre>` wrapped off-CLI, safe when empty.
-- `getThumbnail(): \GdImage|false` — GD only touched here.
-- `isPNG(string $path): bool`, `getType(string $path): int|false` (via `exif_imagetype`).
+`PngMetadataReader::create(bool $strict = false)->read($input): MetadataDocument`
+accepts a file path, binary string, or stream resource. Strict mode enables
+per-chunk CRC-32 + ordering validation.
 
-**New typed API (v2):** `PngMetadataReader::create(bool $strict = false)->read($input): MetadataDocument`.
-Strict mode enables per-chunk CRC-32 + ordering validation.
+`MetadataDocument` (final readonly) exposes: `header` (`HeaderData`: width,
+height, bitDepth, `ColorType`, compression/filter, `InterlaceMethod`), `texts`
+(`TextEntry[]` in file order, repeated keywords preserved), `xmp` (structured
+array), `exif` (decoded sections), `background` (`BackgroundColor`),
+`renderingIntent` (`RenderingIntent`), `thumbnailBytes(): ?string` (no GD), and
+`toArray()`. Errors are typed exceptions under `PngMetadataException`
+(`InvalidPngException`, `TruncatedDataException`, `ChunkDecodingException`,
+`CrcMismatchException`).
 
-### Output parity contract
+### v1 compatibility — intentionally removed
 
-The legacy array reproduces v1 **exactly**, including quirks. Known intentional quirk:
-the `IHDR` group **omits the `Interlace` key** (v1 read 6 of the 7 IHDR fields). The
-interlace method is still available on the typed core (`$document->header?->interlaceMethod`).
-`tests/Unit/LegacyParityTest.php` freezes this — if it fails after your change, you broke
-a consumer-visible behavior.
+The `PNGMetadata` facade (`ArrayObject`, colon-path `get()`, legacy array
+output, `\GdImage` thumbnails, `InvalidArgumentException` codes 101/102/103) and
+the legacy output contract were removed in 2.0.0 (openspec change
+`remove-v1-compatibility`). Do not reintroduce them: the typed model is the
+consumer contract, and the `1.x` branch remains the home for the old API.
 
 ## 5. Where things live
 
@@ -111,9 +106,7 @@ a consumer-visible behavior.
 | `src/Chunk/` | one decoder per chunk type + registry + builder + context |
 | `src/Metadata/` | immutable VOs + enums (pure domain) |
 | `src/Exception/` | `PngMetadataException` interface + typed exceptions |
-| `src/PNGMetadata.php` | v1 facade over the core |
-| `src/PngMetadataReader.php` | v2 entry point (wires parser → registry → document) |
-| `src/LegacyArrayFormatter.php` | domain → v1 array shape |
+| `src/PngMetadataReader.php` | the public entry point (wires parser → registry → document) |
 | `tests/Fixtures/PngBuilder.php` | **programmatic** PNG fixture builder (no binary images in repo) |
 | `tests/Unit/` | PHPUnit tests, mirroring `src/` structure |
 | `openspec/` | spec-driven change management (see §7) |
@@ -131,18 +124,18 @@ composer validate  # composer.json schema check
 ### Environment note (this machine)
 
 There is **no local PHP/Composer binary** on the host. A Docker dev image is used:
-- Image: `pngmeta-dev` (built from `php:8.3-cli` + exif/gd/xml/mbstring/zlib + Composer).
+- Image: `pngmeta-dev` (built from `php:8.3-cli` + exif/xml/mbstring/zlib + Composer).
 - Run tests/static analysis via:
   `docker run --rm -v "$PWD":/app pngmeta-dev bash -lc 'composer test && composer phpstan'`
 - If the image is missing, rebuild it (see project maintainer); do not assume host PHP.
-- GD in the image has no JPEG support — use `imagegif`/`imagepng` in fixtures.
 
 ## 7. OpenSpec workflow (spec-driven changes)
 
 This repo uses **OpenSpec** (`openspec/`, schema `spec-driven`) for non-trivial changes.
 
 - **Main specs** (the behavior contract): `openspec/specs/<capability>/spec.md`.
-  Current capabilities: `png-parsing`, `metadata-extraction`, `legacy-compatibility`.
+  Current capabilities: `png-parsing`, `metadata-extraction` (the former
+  `legacy-compatibility` capability was removed in 2.0.0).
 - **Changes** (work in flight): `openspec/changes/<name>/` with `proposal.md`,
   `design.md`, `tasks.md`, `specs/` (deltas). Archived under `openspec/changes/archive/`.
 - Useful commands: `openspec list --json`, `openspec status --change <name> --json`,
@@ -179,7 +172,8 @@ The chunk bible and architecture for these live in
 
 ## 10. Guardrails for agents
 
-- **Do not break the v1 public API** or the legacy array shape (see §4 parity contract).
+- **Do not reintroduce v1 compatibility** (the facade, legacy array output, or
+  numeric error codes) — removed by design in 2.0.0; the typed API is the contract.
 - **Do not decode pixel data** (IDAT/fdAT) — out of scope by design.
 - **Do not add framework dependencies** — this is a framework-free core.
 - Keep `composer test` + `composer phpstan` green; add tests for every behavior change.

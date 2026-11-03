@@ -7,8 +7,8 @@ lang: es-ES
 
 Esta sección explica cómo está organizado el código de PNGMetadata y por qué se diseñó así.
 
-- [Arquitectura en capas](/es/architecture/architecture.html) — las tres capas y la regla de dependencia.
-- [API pública](/es/architecture/api.html) — las dos formas de usar la librería (v1 y v2).
+- [Arquitectura en capas](/es/architecture/architecture.html) — las dos capas y la regla de dependencia.
+- [API pública](/es/architecture/api.html) — la API tipada de la librería.
 
 ## La idea en una frase
 

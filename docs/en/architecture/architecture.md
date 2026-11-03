@@ -5,14 +5,10 @@ lang: en-US
 
 # Layered architecture
 
-PNGMetadata is divided into **three layers**, with a strict rule: **dependencies point inward** (from outside in). Each layer only knows the layers below it.
+PNGMetadata is organized in **two layers plus a typed entry point**, with a strict rule: **dependencies point inward** (from outside in). Each layer only knows the layers below it.
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│ LAYER 3 · Facade (compatibility)                           │
-│   PNGMetadata.php            extends ArrayObject (v1 API)  │
-│   LegacyArrayFormatter.php   model → v1-style array        │
-├────────────────────────────────────────────────────────────┤
 │ LAYER 2 · Domain (typed model, NO I/O)                     │
 │   Metadata/   MetadataDocument, HeaderData, TextEntry,     │
 │               BackgroundColor, enums {ColorType, ...}      │
@@ -59,12 +55,6 @@ enum ColorType: int {
     case RGBWithAlpha = 6;
 }
 ```
-
-## Layer 3: Facade — v1 compatibility
-
-The original library (v1) exposed a nested, easy-to-consume array, but weakly typed. To avoid breaking existing users, the `PNGMetadata` facade **reproduces exactly** that array structure.
-
-`LegacyArrayFormatter` is the translator: it takes the typed `MetadataDocument` and converts it to the v1 array.
 
 ## The decoders: the key pattern
 
@@ -114,10 +104,7 @@ ChunkDecoderRegistry ──► the type's decoder decodes it (with IHDR context)
 MetadataBuilder ───► mutable accumulator during the walk
    │
    ▼
-MetadataDocument ──► immutable typed model   ◄── new API (PngMetadataReader::read)
-   │
-   ▼
-LegacyArrayFormatter ──► v1-style array      ◄── v1 API (PNGMetadata facade)
+MetadataDocument ──► immutable typed model   ◄── the only public API (PngMetadataReader::read)
 ```
 
 ### The IHDR context

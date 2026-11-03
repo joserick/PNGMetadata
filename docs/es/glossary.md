@@ -64,13 +64,13 @@ Referencia rápida de términos usados en esta documentación y en el código.
 - **Decoding context** — el contexto (IHDR ya decodificado) que los decoders comparten.
 - **Decoder** — clase que convierte un chunk crudo en datos con significado.
 - **Registry** — mapa que relaciona cada tipo de chunk con su decoder.
-- **Fachada (facade)** — capa que expone una API sencilla sobre un sistema más complejo.
-- **Parity (paridad)** — que la salida de v2 sea idéntica a la de v1.
+- **Fachada (facade)** — capa que expone una API sencilla sobre un sistema más complejo (la fachada v1 se eliminó en la 2.0.0).
+- **Parity (paridad)** — que la salida de v2 fuera idéntica a la de v1 (contrato retirado en la 2.0.0).
 - **Strict mode** — modo de validación con CRC y reglas de orden.
 
 ## Roadmap
 
-- **Fase 1** — núcleo + paridad v1 (completada). Chunks: IHDR, tEXt, iTXt/XMP, eXIf, sRGB, bKGD.
+- **Fase 1** — núcleo + decoders de chunks (completada). Chunks: IHDR, tEXt, iTXt/XMP, eXIf, sRGB, bKGD.
 - **Fase 2** — cobertura clásica: zTXt, iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT, PLTE + resolvedor de precedencia de color.
 - **Fase 3** — PNG 3.0: cICP, mDCV, cLLI, APNG, `image/apng`.
 - **Fase 4** — paquete Laravel (repositorio separado) que consume este núcleo.

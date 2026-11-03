@@ -93,8 +93,8 @@ El byte 12 admite dos valores:
 
 Para la extracción de metadatos, el entrelazado **no afecta** a los metadatos: es una propiedad de cómo se guardan los píxeles, que PNGMetadata ignora por diseño.
 
-::: details Peculiaridad de compatibilidad v1
-La v1 leía solo 6 de los 7 campos de IHDR (se le olvidaba el entrelazado). El array legacy v2 reproduce esa omisión; el enum `interlaceMethod` sí está en el modelo tipado v2.
+::: details Diferencia con la v1
+La v1 leía solo 6 de los 7 campos de IHDR (se le olvidaba el entrelazado). La v2 siempre lee los 7: `interlaceMethod` forma parte del modelo tipado. El formateador legacy que reproducía esa omisión se eliminó en la 2.0.0.
 :::
 
 ## Siguiente

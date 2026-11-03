@@ -74,7 +74,7 @@ Si el XML está corrupto o malformado, `XmpDecoder::parse()` devuelve `null` y e
 XMP se basa en **RDF** (*Resource Description Framework*), un modelo de grafos con conceptos como `rdf:Bag`, `rdf:Seq` y `rdf:Alt` (listas ordenadas, no ordenadas, alternativas). Esto introduce complejidad: un campo puede tener múltiples valores.
 
 ::: details Diferencia con la v1
-La v1 "aplanaba" el XMP con una lógica recursiva idiosincrásica (listas de prefijos a eliminar, concatenación de valores con comas). La v2 usa un enfoque más limpio basado en XPath. Por eso la estructura del array XMP puede diferir ligeramente entre la API v1 (formateador legacy) y la v2 tipada — documentado en el CHANGELOG.
+La v1 "aplanaba" el XMP con una lógica recursiva idiosincrásica (listas de prefijos a eliminar, concatenación de valores con comas). La v2 usa un enfoque más limpio basado en XPath y expone el XMP como array estructurado. El formateador legacy que reproducía la forma plana de la v1 se eliminó en la 2.0.0.
 :::
 
 ## Siguiente

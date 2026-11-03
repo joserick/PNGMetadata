@@ -93,8 +93,8 @@ Byte 12 accepts two values:
 
 For metadata extraction, interlacing **does not affect** the metadata: it is a property of how pixels are stored, which PNGMetadata ignores by design.
 
-::: details v1 compatibility quirk
-v1 read only 6 of the 7 IHDR fields (it forgot interlacing). The v2 legacy array reproduces that omission; the `interlaceMethod` enum is present in the typed v2 model.
+::: details Difference from v1
+v1 read only 6 of the 7 IHDR fields (it forgot interlacing). v2 always reads all 7: `interlaceMethod` is part of the typed model. The legacy formatter that once reproduced the v1 omission was removed in 2.0.0.
 :::
 
 ## Next

@@ -10,15 +10,18 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 
 ## What's new in v2
 
-Version 2 is a ground-up rewrite on a layered architecture, while **keeping the v1 public API intact** — the examples below work unchanged on v2.
+Version 2 is a ground-up rewrite on a layered architecture with a **typed, immutable API**. v2 is a **breaking release**: the v1 `PNGMetadata` array facade is gone and the typed core is now the only interface. The [1.x line](https://github.com/joserick/PNGMetadata) stays available (security fixes only) for anyone who needs the old API. See [Upgrading from v1](#upgrading-from-v1) for the migration map.
 
 - **PHP 8.3+** with typed, immutable value objects and enums.
-- **Layered core**: binary parsing → chunk decoders → typed domain model → v1-compatible facade.
+- **Layered core**: binary parsing → chunk decoders → typed domain model, with dependencies pointing inward.
+- **Flexible input**: file path, binary string, or stream resource.
+- **Strict mode** with per-chunk CRC-32 and ordering validation.
+- **Memory-safe on big images**: `IDAT`/`fdAT` payloads are skipped lazily; extraction cost is proportional to the metadata, not the pixels.
 - **Bug fixes**: EXIF decode failures no longer fatal, positional iTXt parsing (compressed text, language tags), Latin-1 → UTF-8 for tEXt, EXIF magic-byte validation, truncated-file safety.
-- **GD is now optional** — only `getThumbnail()` needs it.
+- **Zero optional extensions**: GD is gone entirely — the embedded thumbnail is returned as bytes.
 - **PHPUnit + PHPStan level max** test suite.
 
-See the [CHANGELOG](CHANGELOG.md) for the full list and the [upgrade notes](#upgrading-from-v1).
+See the [CHANGELOG](CHANGELOG.md) for the full list.
 
 ## Requirements
 
@@ -27,7 +30,6 @@ See the [CHANGELOG](CHANGELOG.md) for the full list and the [upgrade notes](#upg
 - EXIF PHP Extension
 - mbstring PHP Extension
 - zlib PHP Extension
-- GD PHP Extension *(optional — only for `getThumbnail()`)*
 
 ## Installation
 
@@ -39,154 +41,188 @@ $ composer require joserick/png-metadata
 
 ## Use
 
-### Getting a PNGMetadata Instance
+### Reading a PNG
 
 ```php
 // include composer autoload
 require 'vendor/autoload.php';
 
-// import the Joserick PNGMetadata
-use PNGMetadata\PNGMetadata;
-
-// build PNGMetadata object with a image path.
-$png_metadata = new PNGMetadata('Photo.png'); // return a 'ArrayObject' or 'Exception'
-```
-
-In case you don't want to see any **errors** (Exception) generated you can used the static function '**extract()**' which returns a 'null' in case of error.
-
-```php
-$png_metadata = PNGMetadata::extract('Photo.png'); // return a 'ArrayObject' or 'null'
-```
-
-If you want work with simple array without any other function you can call to '**toArray()**'.
-
-```php
-$png_metadata = new PNGMetadata('Photo.png');
-$metadata_array = $png_metadata->toArray(); // return simple 'Array'
-//or
-$metadata_array = PNGMetadata::extract('Photo.png')->toArray(); // return simple 'Array'
-```
-
-## Examples
-
-### Example 1 - All
-
-Print all the metadata.
-
-```php
-$png_metadata = new PNGMetadata('../Photo.png');
-echo $png_metadata; // Print metadata in 2 colums.
-```
-
-Out:
-
-| Metadata | Value |
-|--|--|
-| exif:DateTime | 2019:09:08 23:01:23 |
-| exif:Make | SONY |
-| exif:MimeType | image/png |
-| ... | ... |
-
-### Example 2 - Get Metadata
-
-Get specific metadata.
-
-```php
-$png_metadata = new PNGMetadata(__DIR__.'/Photo.png');
-echo $png_metadata->get('exif:DateTime'); // Return a value, a array or null.
-```
-
-### Example 3 - Types
-
-Print the metadata types (IHDR, sRGB, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
-
-```php
-$png_metadata = new PNGMetadata('./Path/Photo.png');
-// or
-$png_metadata = PNGMetadata::extract('./Path/Photo.png');
-
-foreach($png_metadata as $key => $value){
-	echo $key . "<br>"; // Metadata types
-}
-```
-
-## New in v2: the typed core
-
-Beyond the v1 facade, v2 exposes a typed, immutable domain model. Use it when you want structured data instead of the legacy array:
-
-```php
 use PNGMetadata\PngMetadataReader;
 
+// return an immutable MetadataDocument, or throw a typed exception
 $document = PngMetadataReader::create()->read('Photo.png');
-
-$document->header?->width;              // int
-$document->header?->colorType;          // ColorType enum
-$document->renderingIntent?->label();   // 'Perceptual', ...
-$document->texts;                       // TextEntry[] (tEXt + iTXt)
-$document->xmp;                         // structured XMP array
-$document->exif;                        // decoded EXIF sections
-$document->thumbnailBytes();            // ?string (no GD needed)
 ```
 
-The core also accepts a binary string or a stream resource, not only a file path — useful for framework integrations:
+Access the decoded metadata through typed properties:
+
+```php
+$document->header?->width;              // int
+$document->header?->colorType;          // ColorType enum
+$document->header?->interlaceMethod;    // InterlaceMethod enum
+$document->renderingIntent?->label();   // 'Perceptual', ...
+$document->texts;                       // TextEntry[] (tEXt + iTXt, file order)
+$document->xmp;                         // ?array structured XMP
+$document->exif;                        // ?array decoded EXIF sections
+$document->background;                  // ?BackgroundColor
+$document->thumbnailBytes();            // ?string raw EXIF thumbnail, no GD
+```
+
+Or serialize the whole document:
+
+```php
+$array = $document->toArray(); // return simple 'Array'
+```
+
+### Flexible inputs
+
+The reader accepts a file path, a binary string, or an open stream resource — useful for framework integrations (e.g. Laravel disks):
 
 ```php
 $document = PngMetadataReader::create()->read($binaryString);
 $document = PngMetadataReader::create()->read($streamResource);
 ```
 
-Enable strict validation (CRC-32 per chunk + ordering rules) when you need conformance checking:
+### Strict mode
+
+Enable per-chunk CRC-32 verification and ordering rules (IHDR first, IEND last) when you need conformance checking:
 
 ```php
 $document = PngMetadataReader::create(strict: true)->read('Photo.png');
 ```
 
+## Examples
+
+### Example 1 - All
+
+Print all the metadata as a two-column list:
+
+```php
+$document = PngMetadataReader::create()->read('Photo.png');
+
+$rows = [];
+$flatten = function (array $data, string $prefix = '') use (&$flatten, &$rows): void {
+    foreach ($data as $key => $value) {
+        $path = $prefix === '' ? (string) $key : $prefix . ':' . $key;
+        if (\is_array($value)) {
+            $flatten($value, $path);
+        } else {
+            $rows[$path] = \is_scalar($value) ? (string) $value : \get_debug_type($value);
+        }
+    }
+};
+$flatten($document->toArray());
+
+foreach ($rows as $path => $value) {
+    \printf("%-44s %s\n", $path, $value);
+}
+```
+
+Out:
+
+| Metadata | Value |
+|--|--|
+| IHDR:ImageWidth | 800 |
+| sRGB | Perceptual |
+| texts:0:keyword | Title |
+| ... | ... |
+
+### Example 2 - Get a specific value
+
+```php
+$document = PngMetadataReader::create()->read('Photo.png');
+
+echo $document->header?->width;                       // 800
+echo $document->exif['IFD0']['Make'] ?? '';           // SONY
+```
+
+### Example 3 - Metadata types
+
+Iterate the top-level groups of the document:
+
+```php
+foreach ($document->toArray() as $group => $value) {
+    echo $group . "\n"; // IHDR, sRGB, bKGD, exif, xmp, texts...
+}
+```
+
 ## Extras Functions
 
 ### Get the thumbnail stored in the metadata!
+
+The embedded EXIF thumbnail is available as raw bytes — no GD required:
+
 ```php
-$png_metadata = new PNGMetadata('../Photo.png');
-// or
-$png_metadata = PNGMetadata::extract('../Photo.png');
+$bytes = $document->thumbnailBytes(); // ?string
 
-$thumb = $png_metadata->getThumbnail();
-
-if ($thumb !== false) {
-	header('Content-Type: image/png');
-	imagepng($thumb);
-	imagedestroy($thumb);
+if ($bytes !== null) {
+    header('Content-Type: ' . ($document->exif['THUMBNAIL']['MimeType'] ?? 'image/jpeg'));
+    echo $bytes;
 }
+```
+
+If you genuinely need an image resource, decode it yourself (this is where GD re-enters, as a consumer choice):
+
+```php
+$image = \imagecreatefromstring($document->thumbnailBytes() ?? ''); // needs ext-gd
 ```
 
 ### Is PNG?
+
+Just read it — non-PNG input throws a typed domain exception:
+
 ```php
-if (PNGMetadata::isPNG('./Photo_jpg.png')){
-	echo 'Yes, it is a PNG.';
-}else{
-	echo 'No, it is not a PNG.'
+use PNGMetadata\Exception\PngMetadataException;
+
+try {
+    PngMetadataReader::create()->read('Photo.jpg');
+    echo 'Yes, it is a PNG.';
+} catch (PngMetadataException) {
+    echo 'No, it is not a PNG.';
 }
 ```
 
-### What type?
-|            |            |          |         |          |         |
-|:----------:|:----------:|:--------:|:-------:|:--------:|:-------:|
-|   GIF(1)   |   JPEG(2)  |  PNG (3) |  SWF(4) |  PSD(5)  |  BMP(6) |
-| TIFF_II(7) | TIFF_MM(8) | JP2 (10) | JPX(11) |  JB2(12) | SWC(13) |
-|   IFF(14)  |  WBMP(15)  |  XBM(16) | ICO(17) | WEBP(18) |         |
+Or check without parsing anything, with the native function:
 
 ```php
-return PNGMetadata::getType('./Photo') == 1 // GIF?
+\exif_imagetype('Photo.png') === IMAGETYPE_PNG; // bool
 ```
 
 ## Upgrading from v1
 
-v2 preserves the v1 public API. If you only used the documented methods, no code changes are needed:
+**v2 removes the `PNGMetadata` facade (breaking).** Every v1 entry point has a typed equivalent or a small recipe:
 
-- `new PNGMetadata($path)`, `PNGMetadata::extract($path)`, `->toArray()`, `->get('a:b')`, `echo $metadata`, `->getThumbnail()`, `PNGMetadata::isPNG($path)`, `PNGMetadata::getType($path)`.
+| v1 | v2 |
+|--|--|
+| `new PNGMetadata($path)` | `PngMetadataReader::create()->read($path)` |
+| `PNGMetadata::extract($path)` (null on failure) | `try/catch` recipe below |
+| `$png->toArray()` (v1 groups, `ksort`ed) | `$document->toArray()` (typed structure) |
+| `$png->get('exif:DateTime')` | `$document->exif['IFD0']['DateTime'] ?? null` |
+| `foreach ($png as $key => $value)` | iterate `$document->toArray()` |
+| `echo $png` (two-column table) | Example 1 flatten snippet |
+| `$png->getThumbnail()` (`\GdImage`) | `$document->thumbnailBytes()` (`?string`) |
+| `PNGMetadata::isPNG($path)` | `read()` + `catch`, or `\exif_imagetype($path) === IMAGETYPE_PNG` |
+| `PNGMetadata::getType($path)` | `\exif_imagetype($path)` |
+| `InvalidArgumentException` codes 101/102/103 | typed exceptions under `PNGMetadata\Exception\PngMetadataException` |
 
-One intentional output difference: v1 omitted the `Interlace` key from the `IHDR` group (it read 6 of the 7 fields). v2's legacy array **reproduces that key set exactly** for parity; the interlace method is available on the typed core (`$document->header?->interlaceMethod`).
+Recipe — v1's never-throwing `extract()`:
 
-Requirements changed: PHP 8.3+ (was 7.4+), and `ext-gd` is now only needed for `getThumbnail()`.
+```php
+use PNGMetadata\Exception\PngMetadataException;
+use PNGMetadata\Metadata\MetadataDocument;
+
+$document = null;
+try {
+    $document = PngMetadataReader::create()->read($path);
+} catch (PngMetadataException) {
+    // null, like PNGMetadata::extract()
+}
+```
+
+Behavior notes beyond the API shape:
+
+- Output no longer reproduces v1 quirks: the IHDR group now **includes** the interlace method (`header.interlaceMethod`); v1 silently omitted it.
+- tEXt keyword/text are UTF-8 (converted from the spec's Latin-1), repeated keywords are preserved in file order, and a corrupt EXIF/XMP section is omitted without losing the rest of the metadata.
+- Requirements changed: PHP 8.3+; no GD at all.
 
 ## License
 
