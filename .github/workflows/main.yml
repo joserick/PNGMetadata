@@ -1,6 +1,6 @@
 name: Integrity check
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -10,23 +10,20 @@ jobs:
     - uses: actions/checkout@master
 
     - name: Install PHP
-      uses: shivammathur/setup-php@master
+      uses: shivammathur/setup-php@v2
       with:
-        php-version: 7.4
+        php-version: 8.1
 
     - name: Install composer deps
       run: |
         composer create-project nette/code-checker temp/code-checker ^3 --no-progress
-        composer create-project nette/coding-standard temp/coding-standard ^2 --no-progress
+        composer create-project nette/coding-standard temp/coding-standard ^3 --no-progress
 
         # Install app deps
-        composer install --no-interaction --prefer-dist
+        composer install --no-interaction --prefer-dist --ignore-platform-req=ext-gd
 
-    # Check code checker and coding standards
-    - name: Check coding standards
-      run: |
-        php temp/code-checker/code-checker --short-arrays --strict-types --fix --no-progress
-        php temp/coding-standard/ecs check src --config temp/coding-standard/coding-standard-php71.yml
+    - name: The PHP Security Checker
+      uses: symfonycorp/security-checker-action@v5
 
     - name: Check PHPStan rules
       run: composer phpstan

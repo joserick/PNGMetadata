@@ -1,16 +1,18 @@
-# Welcome to PNGMetadata!
+Welcome to PNGMetadata!
+=======================
 
 PNGMetadata is a library which is able to extract the metadata of an image in png format.
 
 It is important to mention that PNGMetadata does **not** use the software ExifTool so it is completely native.
 
 ![PNGMetadata.gif](https://joserick.com/docs/pngmetadata/PNGMetadata.gif)
-
+## Enjoying this package? [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/joserick)
 ## Requirements
 
 - PHP >= 7.4
 - XML PHP Extension
 - JSON PHP Extension
+- GD PHP Extension
 - EXIF PHP Extension
 
 ## Installation
@@ -82,7 +84,7 @@ echo $png_metadata->get('exif:DateTime'); // Return a value, a array or false.
 
 ### Example 3 - Types
 
-Print the metadata types (IHDR, SRBG, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
+Print the metadata types (IHDR, sRGB, BKGD, EXIF, XMP, CRS, DATE, DC, ICC, AUX, ...).
 
 ```php
 $png_metadata = new PNGMetadata('./Path/Photo.png');
