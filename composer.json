@@ -9,7 +9,7 @@
 		"exiftool"
 	],
 	"type": "library",
-	"license": "GPL-3.0",
+	"license": "GPL-3.0-only",
 	"authors": [
 		{
 			"name": "Jóse Erick Carreón",
@@ -22,26 +22,38 @@
 		}
 	],
 	"require": {
-		"php": "^7.4 || ^8.0",
+		"php": "^8.3",
 		"ext-exif": "*",
-		"ext-gd": "*"
+		"ext-mbstring": "*",
+		"ext-xml": "*",
+		"ext-zlib": "*"
 	},
 	"require-dev": {
-		"phpstan/phpstan": "^0.12.74",
-		"phpstan/phpstan-nette": "^0.12.14",
-		"spaze/phpstan-disallowed-calls": "^1.1",
-		"roave/security-advisories": "dev-master",
-		"tracy/tracy": "^2.7"
+		"phpstan/phpstan": "^2.0",
+		"phpunit/phpunit": "^11.0",
+		"roave/security-advisories": "dev-latest"
+	},
+	"suggest": {
+		"ext-gd": "Required only for PNGMetadata::getThumbnail() to return a GdImage"
 	},
 	"autoload": {
 		"psr-4": {
 			"PNGMetadata\\": "src/"
 		}
 	},
-	"scripts": {
-		"phpstan": [
-			"vendor/bin/phpstan analyse src -c phpstan.neon --level 6 --no-progress"
-		]
+	"autoload-dev": {
+		"psr-4": {
+			"PNGMetadata\\Tests\\": "tests/"
+		}
 	},
-	"minimum-stability": "stable"
+	"scripts": {
+		"test": "vendor/bin/phpunit",
+		"phpstan": "vendor/bin/phpstan analyse -c phpstan.neon --no-progress"
+	},
+	"minimum-stability": "stable",
+	"extra": {
+		"branch-alias": {
+			"dev-master": "2.x-dev"
+		}
+	}
 }
