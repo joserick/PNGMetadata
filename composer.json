@@ -33,9 +33,6 @@
 		"phpunit/phpunit": "^11.0",
 		"roave/security-advisories": "dev-latest"
 	},
-	"suggest": {
-		"ext-gd": "Required only for PNGMetadata::getThumbnail() to return a GdImage"
-	},
 	"autoload": {
 		"psr-4": {
 			"PNGMetadata\\": "src/"

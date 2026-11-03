@@ -110,30 +110,4 @@ final class PngBuilder
 	{
 		return \pack('N', \strlen($data)) . $type . $data . \pack('N', \crc32($type . $data));
 	}
-
-	/**
-	 * Minimal 1x1 GD-generated PNG for tests that need a real encoder.
-	 */
-	public static function gdPng(): string
-	{
-		if (!\extension_loaded('gd')) {
-			throw new \RuntimeException('The GD extension is required for this fixture.');
-		}
-
-		$image = \imagecreatetruecolor(1, 1);
-		if ($image === false) {
-			throw new \RuntimeException('Could not create the GD fixture image.');
-		}
-
-		\ob_start();
-		\imagepng($image);
-		$png = \ob_get_clean();
-		\imagedestroy($image);
-
-		if (!\is_string($png) || $png === '') {
-			throw new \RuntimeException('Could not encode the GD fixture image.');
-		}
-
-		return $png;
-	}
 }

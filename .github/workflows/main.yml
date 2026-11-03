@@ -18,7 +18,7 @@ jobs:
       uses: shivammathur/setup-php@v2
       with:
         php-version: ${{ matrix.php-version }}
-        extensions: exif, gd, mbstring, xml, zlib
+        extensions: exif, mbstring, xml, zlib
         coverage: none
 
     - name: Install dependencies

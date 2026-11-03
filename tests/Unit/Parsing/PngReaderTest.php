@@ -61,6 +61,13 @@ final class PngReaderTest extends TestCase
 	}
 
 	#[Test]
+	public function it_rejects_unreadable_path_input(): void
+	{
+		$this->expectException(InvalidPngException::class);
+		\iterator_to_array(PngReader::create()->chunks('/definitely/not/here.png'), false);
+	}
+
+	#[Test]
 	public function it_rejects_truncated_datastream(): void
 	{
 		$png = \substr(PngBuilder::create()->addIdat()->build(), 0, 40);
