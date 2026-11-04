@@ -5,7 +5,7 @@ lang: es-ES
 
 # API pública: el modelo tipado
 
-PNGMetadata v2 expone **una sola** interfaz: `PngMetadataReader` produce un `MetadataDocument` inmutable y tipado.
+PNGMetadata v2 expone **una sola** interfaz: `PngMetadataReader` produce un `MetadataDocument` inmutable y tipado. Por qué esa es la única superficie — y por qué no hubo release de deprecación — está en el [ADR-009](/es/decisions/ADR-009-v1-compatibility-removed-outright.html).
 
 ```php
 use PNGMetadata\PngMetadataReader;
@@ -54,9 +54,11 @@ El contrato de error es la jerarquía tipada bajo `PNGMetadata\Exception\PngMeta
 - `ChunkDecodingException` — un chunk no se pudo decodificar.
 - `CrcMismatchException` — CRC incorrecto (solo modo estricto).
 
+Esta taxonomía existe en lugar de los códigos numéricos de v1 por las razones del [ADR-006](/es/decisions/ADR-006-typed-exception-taxonomy.html).
+
 ## ¿Dónde quedó la fachada v1?
 
-La antigua fachada de array de la v1 — iteración como objeto, rutas de string separadas por dos puntos, extracción que devuelve null al fallar, miniaturas renderizadas con GD, salida de string en dos columnas y códigos numéricos de error — se **eliminó en la 2.0.0**: v2 es una release con rotura. Cada punto de entrada de v1 tiene su equivalente tipado o una receta corta en la [guía de migración del README](https://github.com/joserick/PNGMetadata#upgrading-from-v1), y la rama `1.x` conserva la API antigua para consumidores legacy.
+La antigua fachada de array de la v1 — iteración como objeto, rutas de string separadas por dos puntos, extracción que devuelve null al fallar, miniaturas renderizadas con GD, salida de string en dos columnas y códigos numéricos de error — se **eliminó en la 2.0.0**: v2 es una release con rotura. Cada punto de entrada de v1 tiene su equivalente tipado o una receta corta en la [guía de migración del README](https://github.com/joserick/PNGMetadata#upgrading-from-v1), y la rama `1.x` conserva la API antigua para consumidores legacy. Que la miniatura sean bytes y no un recurso también es una decisión registrada: [ADR-005](/es/decisions/ADR-005-no-gd-thumbnails-as-bytes.html).
 
 ## Siguiente
 

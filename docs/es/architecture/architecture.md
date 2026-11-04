@@ -5,7 +5,7 @@ lang: es-ES
 
 # Arquitectura en capas
 
-PNGMetadata se organiza en **dos capas más un punto de entrada tipado**, con una regla estricta: **las dependencias apuntan hacia adentro** (de fuera a dentro). Cada capa solo conoce a las que están por debajo de ella.
+PNGMetadata se organiza en **dos capas más un punto de entrada tipado**, con una regla estricta: **las dependencias apuntan hacia adentro** (de fuera a dentro). Cada capa solo conoce a las que están por debajo de ella. Por qué esta forma y qué se descartó quedó registrado en el [ADR-001](/es/decisions/ADR-001-two-layers-plus-typed-entry-point.html).
 
 ```
 ┌────────────────────────────────────────────────────────────┐
@@ -32,6 +32,8 @@ Componentes clave:
 | `PngReader` | Verifica firma, recorre chunks, valida CRC en modo estricto. |
 | `RawChunk` | Un chunk crudo: tipo, longitud, offset, CRC y acceso **perezoso** a los datos. |
 | `ChunkType` | Las 4 letras del tipo + sus banderas (ancillary/private/safe-to-copy). |
+
+Que el payload sea perezoso es una decisión, no un detalle de optimización: leer las etiquetas de una imagen de 50 MB no puede costar 50 MB de RAM — ver [ADR-002](/es/decisions/ADR-002-lazy-chunk-payloads.html).
 
 ## Capa 2: Dominio — dar significado
 
@@ -84,7 +86,7 @@ Gracias a este diseño, soportar un chunk nuevo (por ejemplo `tIME`) no requiere
 1. Crea una clase `TimeDecoder` que implemente `ChunkDecoderInterface`.
 2. Regístrala en `ChunkDecoderRegistry::defaults()`.
 
-Eso es todo. Es el principio **Open/Closed**: el núcleo está cerrado a modificaciones pero abierto a extensiones.
+Eso es todo. Es el principio **Open/Closed**: el núcleo está cerrado a modificaciones pero abierto a extensiones. Las alternativas que se sopesaron (un `match` en el lector, decoders que devuelven valores, el header inyectado por constructor) están en el [ADR-003](/es/decisions/ADR-003-one-decoder-per-chunk-type.html).
 
 ## El flujo completo de extracción
 
@@ -117,9 +119,11 @@ Por eso el `IhdrDecoder` guarda el header en un `DecodingContext`, y los decoder
 $header = $context->requireHeader(); // lanza si IHDR aún no se ha leído
 ```
 
+El mismo context además lleva el modo y si ya se vieron datos de imagen — el estado que sostienen el ADR-007 y el ADR-008.
+
 ### Política de fallos
 
-Una regla transversal gobernada por el modo del lector: un chunk corrupto o ininterpretable **nunca impide leer el resto**. En modo lenient (el predeterminado) el chunk ofensivo se omite y la extracción continúa; en modo strict la misma violación lanza una excepción tipada de dominio que nombra el chunk y su offset de bytes — ahí el objetivo es fallar la verificación de conformance, no perder datos. IHDR es la excepción: su fallo es fatal en ambos modos porque los chunks posteriores pierden su contexto de interpretación. Un chunk auxiliar desconocido nunca es un error.
+Una regla transversal gobernada por el modo del lector: un chunk corrupto o ininterpretable **nunca impide leer el resto**. En modo lenient (el predeterminado) el chunk ofensivo se omite y la extracción continúa; en modo strict la misma violación lanza una excepción tipada de dominio que nombra el chunk y su offset de bytes — ahí el objetivo es fallar la verificación de conformance, no perder datos. IHDR es la excepción: su fallo es fatal en ambos modos porque los chunks posteriores pierden su contexto de interpretación. Un chunk auxiliar desconocido nunca es un error. La política y las violaciones que se perdonaban antes de unificar están en el [ADR-007](/es/decisions/ADR-007-mode-governed-decode-failure-policy.html); las reglas de duplicados y de placement que dependen de ella, en el [ADR-008](/es/decisions/ADR-008-first-wins-singletons-and-exif-placement.html).
 
 ## Siguiente
 

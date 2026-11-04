@@ -51,6 +51,23 @@ export default defineUserConfig({
             ],
           },
           {
+            text: 'Decisiones',
+            collapsible: false,
+            children: [
+              '/es/decisions/README.md',
+              '/es/decisions/ADR-001-two-layers-plus-typed-entry-point.md',
+              '/es/decisions/ADR-002-lazy-chunk-payloads.md',
+              '/es/decisions/ADR-003-one-decoder-per-chunk-type.md',
+              '/es/decisions/ADR-004-ext-exif-behind-magic-byte-validation.md',
+              '/es/decisions/ADR-005-no-gd-thumbnails-as-bytes.md',
+              '/es/decisions/ADR-006-typed-exception-taxonomy.md',
+              '/es/decisions/ADR-007-mode-governed-decode-failure-policy.md',
+              '/es/decisions/ADR-008-first-wins-singletons-and-exif-placement.md',
+              '/es/decisions/ADR-009-v1-compatibility-removed-outright.md',
+              '/es/decisions/ADR-010-test-lanes-and-ratcheted-coverage-gate.md',
+            ],
+          },
+          {
             text: 'Chunks y metadatos',
             collapsible: false,
             children: [
@@ -89,6 +106,23 @@ export default defineUserConfig({
               '/en/architecture/README.md',
               '/en/architecture/architecture.md',
               '/en/architecture/api.md',
+            ],
+          },
+          {
+            text: 'Decisions',
+            collapsible: false,
+            children: [
+              '/en/decisions/README.md',
+              '/en/decisions/ADR-001-two-layers-plus-typed-entry-point.md',
+              '/en/decisions/ADR-002-lazy-chunk-payloads.md',
+              '/en/decisions/ADR-003-one-decoder-per-chunk-type.md',
+              '/en/decisions/ADR-004-ext-exif-behind-magic-byte-validation.md',
+              '/en/decisions/ADR-005-no-gd-thumbnails-as-bytes.md',
+              '/en/decisions/ADR-006-typed-exception-taxonomy.md',
+              '/en/decisions/ADR-007-mode-governed-decode-failure-policy.md',
+              '/en/decisions/ADR-008-first-wins-singletons-and-exif-placement.md',
+              '/en/decisions/ADR-009-v1-compatibility-removed-outright.md',
+              '/en/decisions/ADR-010-test-lanes-and-ratcheted-coverage-gate.md',
             ],
           },
           {

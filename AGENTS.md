@@ -80,6 +80,10 @@ input (path|string|stream)
   iTXt text is UTF-8 and is **not** null-terminated (length comes from chunk length) —
   parse it positionally, never by null-trimming the whole payload.
 
+The decisions above have recorded alternatives: `docs/en/decisions/` (and its `/es/`
+mirror) holds ADR-001…ADR-010 — read the relevant ADR before proposing a change that would
+re-open one.
+
 ## 4. Public API (typed, v2 — the only API)
 
 `PngMetadataReader::create(bool $strict = false)->read($input): MetadataDocument`
@@ -115,6 +119,7 @@ consumer contract, and the `1.x` branch remains the home for the old API.
 | `src/PngMetadataReader.php` | the public entry point (wires parser → registry → document) |
 | `tests/Fixtures/PngBuilder.php` | **programmatic** PNG fixture builder (no binary images in repo) |
 | `tests/Unit/` | PHPUnit tests, mirroring `src/` structure |
+| `docs/<locale>/decisions/` | ADR-001…ADR-010 — the recorded *why* of the invariants (bilingual) |
 | `openspec/` | spec-driven change management (see §7) |
 
 ## 6. Commands
