@@ -120,20 +120,28 @@ consumer contract, and the `1.x` branch remains the home for the old API.
 ## 6. Commands
 
 ```bash
-composer test      # PHPUnit 11
+composer test      # PHPUnit 11 (unit suite; excludes the `performance` group)
+composer coverage  # unit suite with pcov: text summary + coverage.xml
+php tools/check-coverage.php  # coverage gate: fails below the committed BASELINE
+composer test:performance      # heavy memory-bound scenario (50 MB IDAT)
+composer test:integration      # PngSuite corpus when PNGSUITE_DIR is set (skips otherwise)
 composer phpstan   # PHPStan level max
 composer validate  # composer.json schema check
 ```
 
-**Both `composer test` and `composer phpstan` must be green before considering work done.**
+**`composer test` + `composer phpstan` + the coverage gate must be green before
+considering work done.** Before a release, also run `composer test:performance`
+and, if a local corpus is available, `composer test:integration` with
+`PNGSUITE_DIR` set.
 
 ### Environment note (this machine)
 
 There is **no local PHP/Composer binary** on the host. A Docker dev image is used:
-- Image: `pngmeta-dev` (built from `php:8.3-cli` + exif/xml/mbstring/zlib + Composer).
+- Image: `pngmeta-dev`, built from the repo's `Dockerfile` (`php:8.3-cli` + exif +
+  pcov for coverage; xml/mbstring/zlib ship in the base; GD is absent by design).
+- Rebuild after Dockerfile changes: `docker build -t pngmeta-dev .`
 - Run tests/static analysis via:
   `docker run --rm -v "$PWD":/app pngmeta-dev bash -lc 'composer test && composer phpstan'`
-- If the image is missing, rebuild it (see project maintainer); do not assume host PHP.
 
 ## 7. OpenSpec workflow (spec-driven changes)
 
@@ -162,6 +170,10 @@ identical do not need a spec delta.
   `ChunkDecoderRegistry::defaults()`. **Adding a new chunk = one decoder class +
   one registry line** — do not special-case chunks in the reader.
 - Tests use PHPUnit 11 attributes (`#[Test]`, `#[CoversClass]`), not `@test` annotations.
+- Coverage attribution: PHPUnit only counts lines of classes declared with
+  `#[CoversClass]`; `#[UsesClass]` documents collaborators but adds nothing to
+  the measured total. Integration-style tests must list every subsystem they
+  exercise as `#[CoversClass]`, or the gate silently under-counts.
 - Fixtures are generated with `PngBuilder` (handcrafted chunk writers); never commit
   real photos or third-party images (licensing / personal data).
 

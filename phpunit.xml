@@ -6,12 +6,21 @@
 		 failOnWarning="true"
 		 failOnNotice="true"
 		 failOnDeprecation="true"
-		 cacheDirectory=".phpunit.cache">
+		 cacheDirectory=".phpunit.cache"
+		 requireCoverageMetadata="true">
 	<testsuites>
 		<testsuite name="unit">
 			<directory>tests/Unit</directory>
 		</testsuite>
+		<testsuite name="integration">
+			<directory>tests/Integration</directory>
+		</testsuite>
 	</testsuites>
+	<groups>
+		<exclude>
+			<group>performance</group>
+		</exclude>
+	</groups>
 	<source>
 		<include>
 			<directory>src</directory>

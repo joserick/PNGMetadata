@@ -4,7 +4,28 @@ declare(strict_types=1);
 
 namespace PNGMetadata\Tests\Unit\Metadata;
 
+use PNGMetadata\Chunk\BkgdDecoder;
+use PNGMetadata\Chunk\ChunkDecoderRegistry;
+use PNGMetadata\Chunk\DecodingContext;
+use PNGMetadata\Chunk\ExifDecoder;
+use PNGMetadata\Chunk\IhdrDecoder;
+use PNGMetadata\Chunk\ItxtDecoder;
+use PNGMetadata\Chunk\MetadataBuilder;
+use PNGMetadata\Chunk\SrgbDecoder;
+use PNGMetadata\Chunk\TextDecoder;
+use PNGMetadata\Chunk\XmpDecoder;
 use PNGMetadata\Exception\InvalidPngException;
+use PNGMetadata\Metadata\BackgroundColor;
+use PNGMetadata\Metadata\ColorType;
+use PNGMetadata\Metadata\HeaderData;
+use PNGMetadata\Metadata\InterlaceMethod;
+use PNGMetadata\Metadata\MetadataDocument;
+use PNGMetadata\Metadata\RenderingIntent;
+use PNGMetadata\Metadata\TextEntry;
+use PNGMetadata\Parsing\BinaryStream;
+use PNGMetadata\Parsing\ChunkType;
+use PNGMetadata\Parsing\PngReader;
+use PNGMetadata\Parsing\RawChunk;
 use PNGMetadata\PngMetadataReader;
 use PNGMetadata\Tests\Fixtures\PngBuilder;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -12,6 +33,28 @@ use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PngMetadataReader::class)]
+#[CoversClass(PngReader::class)]
+#[CoversClass(RawChunk::class)]
+#[CoversClass(ChunkType::class)]
+#[CoversClass(BinaryStream::class)]
+#[CoversClass(ChunkDecoderRegistry::class)]
+#[CoversClass(DecodingContext::class)]
+#[CoversClass(MetadataBuilder::class)]
+#[CoversClass(IhdrDecoder::class)]
+#[CoversClass(TextDecoder::class)]
+#[CoversClass(ItxtDecoder::class)]
+#[CoversClass(ExifDecoder::class)]
+#[CoversClass(SrgbDecoder::class)]
+#[CoversClass(BkgdDecoder::class)]
+#[CoversClass(XmpDecoder::class)]
+#[CoversClass(MetadataDocument::class)]
+#[CoversClass(HeaderData::class)]
+#[CoversClass(ColorType::class)]
+#[CoversClass(InterlaceMethod::class)]
+#[CoversClass(RenderingIntent::class)]
+#[CoversClass(TextEntry::class)]
+#[CoversClass(BackgroundColor::class)]
+#[CoversClass(InvalidPngException::class)]
 final class MetadataDocumentTest extends TestCase
 {
 	#[Test]

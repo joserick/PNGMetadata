@@ -7,13 +7,22 @@ namespace PNGMetadata\Tests\Unit\Parsing;
 use PNGMetadata\Exception\CrcMismatchException;
 use PNGMetadata\Exception\InvalidPngException;
 use PNGMetadata\Exception\TruncatedDataException;
+use PNGMetadata\Parsing\BinaryStream;
+use PNGMetadata\Parsing\ChunkType;
 use PNGMetadata\Parsing\PngReader;
+use PNGMetadata\Parsing\RawChunk;
 use PNGMetadata\Tests\Fixtures\PngBuilder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(PngReader::class)]
+#[CoversClass(RawChunk::class)]
+#[CoversClass(ChunkType::class)]
+#[CoversClass(BinaryStream::class)]
+#[CoversClass(InvalidPngException::class)]
+#[CoversClass(TruncatedDataException::class)]
+#[CoversClass(CrcMismatchException::class)]
 final class PngReaderTest extends TestCase
 {
 	#[Test]

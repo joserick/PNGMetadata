@@ -44,7 +44,10 @@
 		}
 	},
 	"scripts": {
-		"test": "vendor/bin/phpunit",
+		"test": "vendor/bin/phpunit --testsuite unit",
+		"test:performance": "php -d memory_limit=512M vendor/bin/phpunit --testsuite unit --group performance",
+		"test:integration": "vendor/bin/phpunit --testsuite integration",
+		"coverage": "vendor/bin/phpunit --testsuite unit --coverage-text --coverage-clover coverage.xml",
 		"phpstan": "vendor/bin/phpstan analyse -c phpstan.neon --no-progress"
 	},
 	"minimum-stability": "stable",

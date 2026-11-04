@@ -226,6 +226,21 @@ Behavior notes beyond the API shape:
 - tEXt keyword/text are UTF-8 (converted from the spec's Latin-1), repeated keywords are preserved in file order, and a corrupt EXIF/XMP section is omitted without losing the rest of the metadata.
 - Requirements changed: PHP 8.3+; no GD at all.
 
+## Development
+
+```bash
+composer test              # unit suite (fast; excludes the `performance` group)
+composer coverage          # unit suite + pcov: text summary and coverage.xml
+php tools/check-coverage.php           # coverage gate (baseline ratchet, fails below it)
+composer test:performance  # memory-bound scenario: 50 MB IDAT iterated lazily
+composer phpstan           # static analysis, level max
+
+# Real-world corpus (opt-in; third-party images are never committed):
+PNGSUITE_DIR=/path/to/pngsuite composer test:integration
+```
+
+Before releasing, run all lanes: `composer test && composer phpstan && composer coverage && php tools/check-coverage.php && composer test:performance`, plus the PngSuite integration pass when a local corpus is available.
+
 ## License
 
 The GNU Public License (GPLv3). Please see [License File](https://github.com/joserick/PNGMetadata/blob/master/LICENSE) for more information.

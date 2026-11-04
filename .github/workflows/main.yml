@@ -29,3 +29,35 @@ jobs:
 
     - name: Run PHPStan
       run: composer phpstan
+
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: exif, mbstring, xml, zlib
+        coverage: pcov
+
+    - name: Install dependencies
+      run: composer update --no-interaction --no-progress --prefer-dist
+
+    - name: Measure coverage
+      run: composer coverage
+
+    - name: Coverage gate (ratcheted baseline)
+      run: php tools/check-coverage.php
+
+    - name: Performance lane (50 MB IDAT)
+      run: composer test:performance
+
+    - name: Upload Clover report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage.xml
+        path: coverage.xml
+        if-no-files-found: error
