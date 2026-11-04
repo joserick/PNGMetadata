@@ -117,9 +117,9 @@ That is why `IhdrDecoder` stores the header in a `DecodingContext`, and later de
 $header = $context->requireHeader(); // throws if IHDR has not been read yet
 ```
 
-### Failure isolation
+### Failure policy
 
-A cross-cutting principle: **corrupt metadata must never prevent reading the rest**. If EXIF or XMP is damaged, it is silently omitted and the rest of the metadata is extracted normally.
+A cross-cutting rule governed by the reader mode: a corrupt or uninterpretable chunk **never prevents reading the rest**. In lenient mode (the default) the offending chunk is omitted and extraction continues; in strict mode the same violation raises a typed domain exception naming the chunk and its byte offset — there the point is to fail the conformance check, not to lose data. IHDR is the exception: its failure is fatal in both modes because later chunks lose their interpretation context. Unknown ancillary chunks are never an error.
 
 ## Next
 

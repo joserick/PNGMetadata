@@ -7,6 +7,7 @@ namespace PNGMetadata;
 use PNGMetadata\Chunk\ChunkDecoderRegistry;
 use PNGMetadata\Chunk\DecodingContext;
 use PNGMetadata\Chunk\MetadataBuilder;
+use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Parsing\PngReader;
 
@@ -32,12 +33,31 @@ final class PngMetadataReader
 	public function read(mixed $input): MetadataDocument
 	{
 		$reader = PngReader::create($this->strict);
-		$context = new DecodingContext();
-		$builder = new MetadataBuilder();
+		$context = new DecodingContext(strict: $this->strict);
+		$builder = new MetadataBuilder($this->strict);
 
 		foreach ($reader->chunks($input) as $chunk) {
+			if ($chunk->type->equals('IDAT') || $chunk->type->equals('fdAT')) {
+				// PNG 3rd ed. expects eXIf before image data; note the position
+				// before dispatching so later chunks can enforce it in strict mode.
+				$context->noteImageData();
+			}
+
 			$decoder = $this->registry->decoderFor($chunk->getCode());
-			$decoder?->decode($chunk, $context, $builder);
+			if ($decoder === null) {
+				continue; // unknown chunks are never an error (spec, ancillary rule)
+			}
+
+			try {
+				$decoder->decode($chunk, $context, $builder);
+			} catch (ChunkDecodingException $e) {
+				// Unified failure policy: strict mode reports every violation;
+				// lenient mode omits the chunk and keeps extracting - except for
+				// IHDR, whose failure is fatal because later chunks lose context.
+				if ($this->strict || $chunk->type->equals('IHDR')) {
+					throw $e;
+				}
+			}
 		}
 
 		return $builder->build();

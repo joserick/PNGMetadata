@@ -24,6 +24,13 @@ is the only public API. The v1→v2 migration map lives in the README
   resource (not only disk paths).
 - Strict validation mode (`PngMetadataReader::create(strict: true)`) with
   per-chunk CRC-32 verification and critical ordering rules (IHDR first, IEND last).
+- Unified decode-failure policy: lenient mode omits corrupt chunks (unknown
+  ancillary chunks are never an error) and always completes extraction; strict
+  mode now reports every decode-conformance violation — malformed payloads,
+  duplicated singleton chunks (sRGB/bKGD/eXIf/XMP) and late-placed eXIf (PNG
+  Third Edition requires eXIf before the first IDAT; lenient mode still decodes
+  it for interoperability) — with the chunk type and byte offset. IHDR failures
+  are fatal in both modes.
 - Lazy chunk payloads: `IDAT`/`fdAT` image data can be skipped without loading
   it into memory, so metadata extraction cost stays proportional to metadata size.
 - Domain exception taxonomy under `PNGMetadata\Exception\PngMetadataException`.
@@ -55,6 +62,14 @@ is the only public API. The v1→v2 migration map lives in the README
 - Truncated datastreams and short reads now raise a domain exception instead of
   emitting partial data.
 - The single-instance rule for the eXIf chunk is enforced (first one wins).
+- A malformed iTXt chunk no longer aborts the whole extraction in lenient mode;
+  it is omitted like any other corrupt chunk.
+- An uninterpretable bKGD (no IHDR context yet, or a short payload) raises a
+  policy-governed domain failure instead of crashing with a logic error.
+- Duplicated singleton chunks are deterministically first-wins (previously
+  sRGB, bKGD and XMP silently kept the last instance).
+- tEXt/iTXt keywords are validated against the spec bounds (1-79 bytes) and
+  tEXt payloads must carry the null terminator; violations follow the policy.
 
 ### Deprecated
 

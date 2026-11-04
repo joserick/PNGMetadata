@@ -117,9 +117,9 @@ Por eso el `IhdrDecoder` guarda el header en un `DecodingContext`, y los decoder
 $header = $context->requireHeader(); // lanza si IHDR aún no se ha leído
 ```
 
-### Aislamiento de fallos
+### Política de fallos
 
-Un principio transversal: **un metadato corrupto nunca debe impedir leer el resto**. Si el EXIF o el XMP están dañados, se omiten silenciosamente y el resto de metadatos se extrae con normalidad.
+Una regla transversal gobernada por el modo del lector: un chunk corrupto o ininterpretable **nunca impide leer el resto**. En modo lenient (el predeterminado) el chunk ofensivo se omite y la extracción continúa; en modo strict la misma violación lanza una excepción tipada de dominio que nombra el chunk y su offset de bytes — ahí el objetivo es fallar la verificación de conformance, no perder datos. IHDR es la excepción: su fallo es fatal en ambos modos porque los chunks posteriores pierden su contexto de interpretación. Un chunk auxiliar desconocido nunca es un error.
 
 ## Siguiente
 

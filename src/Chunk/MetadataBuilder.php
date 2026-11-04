@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PNGMetadata\Chunk;
 
+use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Metadata\BackgroundColor;
 use PNGMetadata\Metadata\HeaderData;
 use PNGMetadata\Metadata\MetadataDocument;
@@ -33,6 +34,14 @@ final class MetadataBuilder
 
 	private ?BackgroundColor $background = null;
 
+	/** @var array<string, true> singletons already accepted (first wins) */
+	private array $singletons = [];
+
+	public function __construct(
+		private readonly bool $strict = false,
+	) {
+	}
+
 	public function setHeader(HeaderData $header): void
 	{
 		$this->header = $header;
@@ -51,31 +60,39 @@ final class MetadataBuilder
 	/**
 	 * @param array<string, mixed> $xmp
 	 */
-	public function setXmp(array $xmp): void
+	public function setXmp(array $xmp, string $chunkCode, int $offset): void
 	{
+		if (!$this->acceptsSingleton('XMP packet', $chunkCode, $offset)) {
+			return;
+		}
 		$this->xmp = $xmp;
 	}
 
 	/**
 	 * @param array<string, mixed> $exif
 	 */
-	public function setExif(array $exif, string $rawPayload): void
+	public function setExif(array $exif, string $rawPayload, string $chunkCode, int $offset): void
 	{
-		// Single eXIf chunk allowed; the first one wins.
-		if ($this->exif !== null) {
+		if (!$this->acceptsSingleton('eXIf', $chunkCode, $offset)) {
 			return;
 		}
 		$this->exif = $exif;
 		$this->exifRaw = $rawPayload;
 	}
 
-	public function setRenderingIntent(RenderingIntent $intent): void
+	public function setRenderingIntent(RenderingIntent $intent, string $chunkCode, int $offset): void
 	{
+		if (!$this->acceptsSingleton('sRGB', $chunkCode, $offset)) {
+			return;
+		}
 		$this->renderingIntent = $intent;
 	}
 
-	public function setBackground(BackgroundColor $background): void
+	public function setBackground(BackgroundColor $background, string $chunkCode, int $offset): void
 	{
+		if (!$this->acceptsSingleton('bKGD', $chunkCode, $offset)) {
+			return;
+		}
 		$this->background = $background;
 	}
 
@@ -90,5 +107,29 @@ final class MetadataBuilder
 			renderingIntent: $this->renderingIntent,
 			background: $this->background,
 		);
+	}
+
+	/**
+	 * Chunks the spec allows at most once keep their first decoded instance;
+	 * later instances are a conformance violation - ignored in lenient mode,
+	 * reported as a decode failure in strict mode.
+	 */
+	private function acceptsSingleton(string $key, string $chunkCode, int $offset): bool
+	{
+		if (!isset($this->singletons[$key])) {
+			$this->singletons[$key] = true;
+
+			return true;
+		}
+
+		if ($this->strict) {
+			throw ChunkDecodingException::forChunk(
+				$chunkCode,
+				$offset,
+				\sprintf('only one %s chunk is allowed; the first instance wins.', $key),
+			);
+		}
+
+		return false;
 	}
 }

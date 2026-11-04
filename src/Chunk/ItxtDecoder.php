@@ -13,7 +13,9 @@ use PNGMetadata\Parsing\RawChunk;
  *   keyword \0 compFlag(1) compMethod(1) langTag \0 translatedKeyword \0 text
  *
  * The text field is NOT null-terminated; its length derives from the chunk
- * length. When compFlag = 1 the text is a zlib datastream.
+ * length. When compFlag = 1 the text is a zlib datastream. All malformed
+ * shapes raise ChunkDecodingException; the reader applies the unified
+ * failure policy (lenient omits, strict reports).
  */
 final class ItxtDecoder implements ChunkDecoderInterface
 {
@@ -31,16 +33,27 @@ final class ItxtDecoder implements ChunkDecoderInterface
 		$offset = 0;
 		$length = \strlen($data);
 
-		$keyword = $this->readNullTerminated($data, $offset, $length, 'keyword');
+		$keyword = $this->readNullTerminated($data, $offset, $chunk, 'keyword');
+		if ($keyword === '' || \strlen($keyword) > 79) {
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf('iTXt keyword must be 1-79 bytes, %d given.', \strlen($keyword)),
+			);
+		}
 
 		if ($offset + 2 > $length) {
-			throw new ChunkDecodingException('iTXt chunk is missing the compression flag/method bytes.');
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'iTXt chunk is missing the compression flag/method bytes.',
+			);
 		}
 		$compressionFlag = \ord($data[$offset]);
 		$offset += 2; // flag + method (method is always 0 and ignored for uncompressed text)
 
-		$languageTag = $this->readNullTerminated($data, $offset, $length, 'language tag');
-		$translatedKeyword = $this->readNullTerminated($data, $offset, $length, 'translated keyword');
+		$languageTag = $this->readNullTerminated($data, $offset, $chunk, 'language tag');
+		$translatedKeyword = $this->readNullTerminated($data, $offset, $chunk, 'translated keyword');
 
 		$text = \substr($data, $offset); // not null-terminated: rest of the chunk
 
@@ -48,15 +61,19 @@ final class ItxtDecoder implements ChunkDecoderInterface
 		if ($compressed) {
 			$inflated = @\gzuncompress($text);
 			if ($inflated === false) {
-				throw new ChunkDecodingException('iTXt text is flagged as compressed but zlib inflation failed.');
+				throw ChunkDecodingException::forChunk(
+					$chunk->getCode(),
+					$chunk->dataOffset,
+					'iTXt text is flagged as compressed but zlib inflation failed.',
+				);
 			}
 			$text = $inflated;
 		}
 
 		if ($keyword === self::XMP_KEYWORD) {
-			$xmp = XmpDecoder::parse($text);
+			$xmp = XmpDecoder::parse($text, $chunk->getCode(), $chunk->dataOffset);
 			if ($xmp !== null) {
-				$builder->setXmp($xmp);
+				$builder->setXmp($xmp, $chunk->getCode(), $chunk->dataOffset);
 			}
 
 			return;
@@ -72,11 +89,15 @@ final class ItxtDecoder implements ChunkDecoderInterface
 		));
 	}
 
-	private function readNullTerminated(string $data, int &$offset, int $length, string $field): string
+	private function readNullTerminated(string $data, int &$offset, RawChunk $chunk, string $field): string
 	{
 		$end = \strpos($data, "\0", $offset);
 		if ($end === false) {
-			throw new ChunkDecodingException(\sprintf('iTXt chunk is missing the null separator after the %s.', $field));
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf('iTXt chunk is missing the null separator after the %s.', $field),
+			);
 		}
 		$value = \substr($data, $offset, $end - $offset);
 		$offset = $end + 1;

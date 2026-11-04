@@ -34,7 +34,7 @@ El TIFF data empieza con un **header de byte order**:
 ### La validación del "número mágico"
 
 ::: tip Decisión de diseño
-Antes de decodificar, la librería verifica estos 4 bytes. Si no coinciden, **omite el EXIF silenciosamente** (no lanza error) y sigue con el resto de metadatos. Esto cumple la recomendación de la especificación (§11.3.4.5.2) y evita un `TypeError` que existía en la v1 cuando `exif_read_data()` devolvía `false`.
+Antes de decodificar, la librería verifica estos 4 bytes. Si no coinciden, hay un **fallo de decodificación**: en modo lenient el EXIF se omite (y sigue el resto de metadatos); en modo strict, `read()` lo reporta. Además, en modo strict se rechaza un eXIf que aparezca después del primer `IDAT` (la Tercera Edición de PNG lo coloca antes de los datos de imagen; en lenient se decodifica igual por interoperabilidad con codificadores legacy). Esto cumple la recomendación de la especificación (§11.3.4.5.2) y evita un `TypeError` que existía en la v1 cuando `exif_read_data()` devolvía `false`.
 :::
 
 ## Cómo se extrae

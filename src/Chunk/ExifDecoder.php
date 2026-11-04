@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace PNGMetadata\Chunk;
 
+use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Parsing\RawChunk;
 
 /**
  * Decodes the eXIf chunk: an Exif profile (CIPA DC-008 §4.7.2) without the
  * JPEG APP1 marker and "Exif\0\0" ID code (spec section 11.3.4.5).
  *
- * The payload is validated against the TIFF magic bytes before decoding, and
- * a decoding failure never aborts extraction of the remaining metadata.
+ * The payload is validated against the TIFF magic bytes before decoding.
+ * Every failure raises ChunkDecodingException; the reader's unified policy
+ * omits the section in lenient mode (net behavior unchanged from before) and
+ * reports it in strict mode.
  */
 final class ExifDecoder implements ChunkDecoderInterface
 {
@@ -28,12 +31,28 @@ final class ExifDecoder implements ChunkDecoderInterface
 		$data = $chunk->data();
 
 		if (!self::hasValidMagic($data)) {
-			return; // invalid profile: EXIF section omitted
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'invalid TIFF header: expected "II*\\0" or "MM\\0*" magic bytes (spec §11.3.4.5.2).',
+			);
+		}
+
+		if ($context->strict && $context->sawImageData()) {
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'eXIf must appear before the first IDAT chunk (PNG Third Edition, §11.3.4.5).',
+			);
 		}
 
 		$stream = @\fopen('php://temp', 'r+b');
 		if ($stream === false) {
-			return;
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'could not allocate a temporary stream for the Exif profile.',
+			);
 		}
 		\fwrite($stream, $data);
 		\rewind($stream);
@@ -42,11 +61,15 @@ final class ExifDecoder implements ChunkDecoderInterface
 		\fclose($stream);
 
 		if (!\is_array($exif) || $exif === []) {
-			return; // decoding failed: EXIF section omitted, never fatal
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'the Exif profile could not be decoded.',
+			);
 		}
 
 		/** @var array<string, mixed> $exif */
-		$builder->setExif($exif, $data);
+		$builder->setExif($exif, $data, $chunk->getCode(), $chunk->dataOffset);
 	}
 
 	/**

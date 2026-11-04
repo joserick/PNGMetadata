@@ -67,8 +67,13 @@ input (path|string|stream)
 - **IHDR as context:** some chunks (bKGD, and in future tRNS) cannot be interpreted
   without the IHDR color type. `IhdrDecoder` writes into `DecodingContext`; later
   decoders read it via `requireHeader()`.
-- **Failure isolation:** a corrupt EXIF or XMP section is **omitted**, never fatal —
-  extraction of the remaining metadata must always succeed.
+- **Failure policy (mode-governed):** decoders raise `ChunkDecodingException::forChunk`
+  (chunk type + byte offset in the message) on any malformed payload; `PngMetadataReader`
+  omits the chunk in lenient mode — extraction of the remaining metadata must always
+  succeed — and rethrows in strict mode. IHDR failure is fatal in both modes (it is the
+  interpretation context). Unknown ancillary chunks are never an error. Singleton chunks
+  (sRGB, bKGD, eXIf, XMP packet) are first-wins; strict mode reports the duplicate.
+  Late eXIf (after the first IDAT, forbidden by PNG 3rd ed.) is rejected only in strict.
 - **eXIf validation:** verify TIFF magic bytes (`II*\0` / `MM\0*`) before decoding
   (PNG spec §11.3.4.5.2). Single eXIf instance; first one wins.
 - **Charsets:** tEXt is ISO-8859-1 (Latin-1) per spec → converted to UTF-8 on output.
@@ -79,7 +84,8 @@ input (path|string|stream)
 
 `PngMetadataReader::create(bool $strict = false)->read($input): MetadataDocument`
 accepts a file path, binary string, or stream resource. Strict mode enables
-per-chunk CRC-32 + ordering validation.
+per-chunk CRC-32, ordering, and decode-conformance validation (malformed
+chunks, duplicated singletons, eXIf placement).
 
 `MetadataDocument` (final readonly) exposes: `header` (`HeaderData`: width,
 height, bitDepth, `ColorType`, compression/filter, `InterlaceMethod`), `texts`

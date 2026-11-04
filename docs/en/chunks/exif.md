@@ -42,10 +42,11 @@ Before decoding, the library verifies these 4 bytes. If they do not match, it **
 `ExifDecoder`:
 
 1. Reads the chunk payload.
-2. Verifies the magic bytes (`II*\0` or `MM\0*`).
-3. Writes the payload to an in-memory stream (`php://temp`).
-4. Calls `exif_read_data($stream, null, true)` — PHP parses it for you.
-5. If it returns `false` or an empty array, the EXIF is omitted.
+2. Verifies the magic bytes (`II*\0` or `MM\0*`); a mismatch is a decode failure.
+3. In strict mode, rejects the chunk if it appears after the first `IDAT` (PNG Third Edition places eXIf before image data; lenient mode still decodes it for interoperability with legacy encoders).
+4. Writes the payload to an in-memory stream (`php://temp`).
+5. Calls `exif_read_data($stream, null, true)` — PHP parses it for you.
+6. If it returns `false` or an empty array, that is also a decode failure: the EXIF is omitted in lenient mode and reported in strict mode.
 
 ```php
 // Usage

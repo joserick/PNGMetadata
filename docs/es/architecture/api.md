@@ -43,7 +43,7 @@ Esto es clave para integrarlo con frameworks que entregan streams (por ejemplo, 
 $documento = PngMetadataReader::create(strict: true)->read('foto.png');
 ```
 
-Valida el CRC-32 de cada chunk y las reglas de orden (IHDR primero, IEND último). Útil para conformance, pero más lento.
+Valida el CRC-32 de cada chunk y las reglas de orden (IHDR primero, IEND último), además de la conformance de decodificación: chunks malformados, singletons duplicados y eXIf después del primer IDAT lanzan una excepción tipada que nombra el chunk y su offset. Útil para conformance, pero más lento.
 
 ## Excepciones
 

@@ -5,19 +5,25 @@ declare(strict_types=1);
 namespace PNGMetadata\Chunk;
 
 use DOMDocument;
+use PNGMetadata\Exception\ChunkDecodingException;
 
 /**
  * Parses an XMP packet (XML) into a structured array.
  *
- * Invalid XML yields null so a broken packet never aborts extraction
- * of the remaining metadata.
+ * Malformed XML is a decode failure governed by the unified policy (strict
+ * mode reports it; lenient mode omits the packet without aborting the rest
+ * of the extraction). A well-formed packet with no extractable properties
+ * returns null - an empty XMP document is not a violation.
  */
 final class XmpDecoder
 {
 	/**
-	 * @return array<string, mixed>|null Structured XMP properties, or null on invalid XML.
+	 * @return array<string, mixed>|null Structured XMP properties, or null when the
+	 *                                   packet is valid but carries nothing.
+	 *
+	 * @throws ChunkDecodingException When the packet is not well-formed XML.
 	 */
-	public static function parse(string $xml): ?array
+	public static function parse(string $xml, string $code, int $offset): ?array
 	{
 		if (\trim($xml) === '') {
 			return null;
@@ -32,7 +38,7 @@ final class XmpDecoder
 		\libxml_use_internal_errors($previous);
 
 		if (!$loaded || $dom->documentElement === null) {
-			return null;
+			throw ChunkDecodingException::forChunk($code, $offset, 'XMP packet is not well-formed XML.');
 		}
 
 		$namespaces = [];

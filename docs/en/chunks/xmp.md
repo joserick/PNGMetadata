@@ -65,9 +65,9 @@ The same date can be in EXIF (`eXIf`), in XMP (`exif:DateTimeOriginal`) and in `
 $document->xmp; // ['dc' => ['title' => 'My Title', ...], ...]
 ```
 
-### Failure isolation
+### Failure policy
 
-If the XML is corrupt or malformed, `XmpDecoder::parse()` returns `null` and the XMP is **silently omitted**. The rest of the metadata is extracted normally. A broken XMP packet must never bring down extraction.
+If the XML is corrupt or malformed, `XmpDecoder::parse()` raises a decode failure: in lenient mode the XMP is omitted and the rest of the metadata is extracted normally; in strict mode `read()` reports the broken packet. A packet that is well-formed but carries no properties is simply empty - never an error in any mode. A broken XMP packet must never bring down lenient extraction.
 
 ## RDF and the hidden complexity
 

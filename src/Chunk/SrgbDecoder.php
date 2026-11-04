@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace PNGMetadata\Chunk;
 
+use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Parsing\RawChunk;
 
 /**
  * Decodes the sRGB chunk: a single byte with the rendering intent
- * (spec section 11.3.2.5). Out-of-range bytes are reported as unknown.
+ * (spec section 11.3.2.5). Out-of-range bytes are decode failures: the
+ * unified policy omits the intent in lenient mode and reports it in strict.
  */
 final class SrgbDecoder implements ChunkDecoderInterface
 {
@@ -22,11 +24,22 @@ final class SrgbDecoder implements ChunkDecoderInterface
 	{
 		$data = $chunk->data();
 		if ($data === '') {
-			return;
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'sRGB chunk has no data.',
+			);
 		}
+
 		$intent = RenderingIntent::fromByte(\ord($data[0]));
-		if ($intent !== null) {
-			$builder->setRenderingIntent($intent);
+		if ($intent === null) {
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf('unknown sRGB rendering intent byte %d.', \ord($data[0])),
+			);
 		}
+
+		$builder->setRenderingIntent($intent, $chunk->getCode(), $chunk->dataOffset);
 	}
 }

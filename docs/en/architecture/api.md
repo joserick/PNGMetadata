@@ -43,7 +43,7 @@ This is key for integrating with frameworks that deliver streams (e.g. Laravel's
 $document = PngMetadataReader::create(strict: true)->read('photo.png');
 ```
 
-Validates each chunk's CRC-32 and ordering rules (IHDR first, IEND last). Useful for conformance, but slower.
+Validates each chunk's CRC-32 and ordering rules (IHDR first, IEND last), plus decode conformance: malformed chunks, duplicated singletons, and eXIf placed after the first IDAT raise a typed exception naming the chunk and its offset. Useful for conformance, but slower.
 
 ## Exceptions
 

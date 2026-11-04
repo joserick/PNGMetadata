@@ -110,4 +110,21 @@ final class PngBuilder
 	{
 		return \pack('N', \strlen($data)) . $type . $data . \pack('N', \crc32($type . $data));
 	}
+
+	/**
+	 * Minimal little-endian TIFF profile as carried by an eXIf chunk (the APP1
+	 * JPEG marker and "Exif\0\0" ID code are excluded per spec 11.3.4.5):
+	 * header + IFD0 with a single Make entry + value area at byte 26.
+	 */
+	public static function exifProfile(string $make = 'SONY'): string
+	{
+		$value = $make . "\0";
+
+		return "II\x2A\x00"
+			. \pack('V', 8) // IFD0 offset
+			. \pack('v', 1) // one entry
+			. \pack('v', 0x010F) . \pack('v', 2) . \pack('V', \strlen($value)) . \pack('V', 26)
+			. \pack('V', 0) // no next IFD
+			. $value;
+	}
 }

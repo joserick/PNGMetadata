@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace PNGMetadata\Chunk;
 
+use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Metadata\TextEntry;
 use PNGMetadata\Parsing\RawChunk;
 
@@ -23,14 +24,26 @@ final class TextDecoder implements ChunkDecoderInterface
 		$data = $chunk->data();
 		$separator = \strpos($data, "\0");
 
+		// Spec requires keyword + null terminator + text (text may be empty);
+		// a payload without the terminator is malformed, not keyword-only.
 		if ($separator === false) {
-			// Keyword-only chunk; the text is an empty string.
-			$keyword = $data;
-			$text = '';
-		} else {
-			$keyword = \substr($data, 0, $separator);
-			$text = \substr($data, $separator + 1);
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'tEXt payload has no null terminator.',
+			);
 		}
+
+		$keyword = \substr($data, 0, $separator);
+		if ($keyword === '' || \strlen($keyword) > 79) {
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf('tEXt keyword must be 1-79 bytes, %d given.', \strlen($keyword)),
+			);
+		}
+
+		$text = \substr($data, $separator + 1);
 
 		$builder->addText(new TextEntry(
 			keyword: self::latin1ToUtf8($keyword),

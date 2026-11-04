@@ -84,7 +84,9 @@ $document = PngMetadataReader::create()->read($streamResource);
 
 ### Strict mode
 
-Enable per-chunk CRC-32 verification and ordering rules (IHDR first, IEND last) when you need conformance checking:
+Enable strict validation — per-chunk CRC-32, ordering rules, and decode
+conformance (malformed chunks, duplicated singletons, late `eXIf` placement) —
+when you need spec-compliance checking:
 
 ```php
 $document = PngMetadataReader::create(strict: true)->read('Photo.png');
