@@ -113,7 +113,7 @@ final class RandomizedCorpusTest extends TestCase
 
 		$ops[] = function (PngBuilder $builder) use ($randomizer): void {
 			// Unknown ancillary chunk (spec 5.4 example): must never error.
-			$builder->addChunk('vpAg', "\x00\x00\x00\x00\x03" . \random_bytes(4));
+			$builder->addChunk('vpAg', "\x00\x00\x00\x00\x03" . $randomizer->getBytes(4));
 		};
 
 		$ops[] = function (PngBuilder $builder) use ($randomizer): void {

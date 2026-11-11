@@ -49,6 +49,17 @@ final class ChunkTypeTest extends TestCase
 	}
 
 	#[Test]
+	public function srgb_is_ancillary_despite_its_uppercase_fourth_letter(): void
+	{
+		// Only the first letter decides criticality: "sRGB" is ancillary even
+		// though its last letter is uppercase (spec section 5.4).
+		$type = ChunkType::fromBytes('sRGB');
+
+		self::assertTrue($type->isAncillary());
+		self::assertFalse($type->isCritical());
+	}
+
+	#[Test]
 	public function lowercase_third_letter_invalidates_the_reserved_bit(): void
 	{
 		$type = ChunkType::fromBytes('vpag');

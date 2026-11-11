@@ -58,8 +58,8 @@ final class PngReaderTest extends TestCase
 		\fclose($stream);
 		\unlink($path);
 
-		self::assertSame($fromString, $fromPath);
-		self::assertSame($fromPath, $fromStream);
+		self::assertSame($fromString, $fromPath, 'path input must parse identically to a binary string');
+		self::assertSame($fromPath, $fromStream, 'stream input must parse identically to a path input');
 	}
 
 	#[Test]
@@ -82,6 +82,18 @@ final class PngReaderTest extends TestCase
 		$png = \substr(PngBuilder::create()->addIdat()->build(), 0, 40);
 
 		$this->expectException(TruncatedDataException::class);
+		$this->expectExceptionMessage('ended while reading chunk header');
+		\iterator_to_array(PngReader::create()->chunks($png), false);
+	}
+
+	#[Test]
+	public function clean_eof_after_a_complete_chunk_reports_the_missing_iend(): void
+	{
+		$png = PngBuilder::SIGNATURE
+			. PngBuilder::chunk('IHDR', \pack('NNCCCCC', 10, 10, 8, 6, 0, 0, 0));
+
+		$this->expectException(TruncatedDataException::class);
+		$this->expectExceptionMessage('ended before the IEND chunk');
 		\iterator_to_array(PngReader::create()->chunks($png), false);
 	}
 

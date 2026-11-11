@@ -112,19 +112,42 @@ final class PngBuilder
 	}
 
 	/**
-	 * Minimal little-endian TIFF profile as carried by an eXIf chunk (the APP1
-	 * JPEG marker and "Exif\0\0" ID code are excluded per spec 11.3.4.5):
-	 * header + IFD0 with a single Make entry + value area at byte 26.
+	 * Minimal TIFF profile as carried by an eXIf chunk (the APP1 JPEG marker and
+	 * "Exif\0\0" ID code are excluded per spec 11.3.4.5): header + IFD0 with a
+	 * single Make entry + value area at byte 26. When a thumbnail payload is
+	 * given, IFD1 is appended with the JPEGInterchangeFormat pair so
+	 * ext-exif's exif_thumbnail() can recover it.
+	 *
+	 * @param bool $bigEndian Motorola ("MM\0*") byte order; Intel ("II*\0") by default.
 	 */
-	public static function exifProfile(string $make = 'SONY'): string
-	{
-		$value = $make . "\0";
+	public static function exifProfile(
+		string $make = 'SONY',
+		bool $bigEndian = false,
+		?string $thumbnail = null,
+	): string {
+		$u16 = $bigEndian ? 'n' : 'v';
+		$u32 = $bigEndian ? 'N' : 'V';
+		$magic = $bigEndian ? "MM\x00\x2A" : "II\x2A\x00";
 
-		return "II\x2A\x00"
-			. \pack('V', 8) // IFD0 offset
-			. \pack('v', 1) // one entry
-			. \pack('v', 0x010F) . \pack('v', 2) . \pack('V', \strlen($value)) . \pack('V', 26)
-			. \pack('V', 0) // no next IFD
-			. $value;
+		$value = $make . "\0";
+		$ifd0Size = 2 + 12 + 4;
+		$makeOffset = 8 + $ifd0Size;               // 26
+		$ifd1Offset = $makeOffset + \strlen($value);
+
+		$ifd0 = \pack($u16, 1) // one entry
+			. \pack($u16, 0x010F) . \pack($u16, 2) . \pack($u32, \strlen($value)) . \pack($u32, $makeOffset)
+			. \pack($u32, $thumbnail === null ? 0 : $ifd1Offset); // next IFD
+
+		if ($thumbnail === null) {
+			return $magic . \pack($u32, 8) . $ifd0 . $value;
+		}
+
+		$thumbnailOffset = $ifd1Offset + 2 + 2 * 12 + 4;
+		$ifd1 = \pack($u16, 2) // two entries: thumbnail offset + length
+			. \pack($u16, 0x0201) . \pack($u16, 4) . \pack($u32, 1) . \pack($u32, $thumbnailOffset)
+			. \pack($u16, 0x0202) . \pack($u16, 4) . \pack($u32, 1) . \pack($u32, \strlen($thumbnail))
+			. \pack($u32, 0); // no further IFD
+
+		return $magic . \pack($u32, 8) . $ifd0 . $value . $ifd1 . $thumbnail;
 	}
 }

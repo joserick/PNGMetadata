@@ -101,10 +101,88 @@ final class MetadataDocumentTest extends TestCase
 	#[Test]
 	public function it_exposes_thumbnail_bytes_without_gd(): void
 	{
-		// Build a minimal EXIF payload with a fake thumbnail by hand is not trivial;
-		// here we only assert that a PNG without EXIF returns null safely.
+		// A PNG without EXIF has no thumbnail to expose.
 		$doc = PngMetadataReader::create()->read(PngBuilder::create()->build());
 
 		self::assertNull($doc->thumbnailBytes());
+	}
+
+	#[Test]
+	public function it_exposes_the_embedded_exif_thumbnail_bytes(): void
+	{
+		$thumbnail = "\xFF\xD8\xFF\xE0THUMB\xFF\xD9";
+
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addExif(PngBuilder::exifProfile(thumbnail: $thumbnail))->build(),
+		);
+
+		self::assertSame($thumbnail, $doc->thumbnailBytes());
+	}
+
+	#[Test]
+	public function it_serializes_the_full_text_and_section_contract(): void
+	{
+		$xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+			. '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
+			. '<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/">'
+			. '<dc:title>Mi Título</dc:title>'
+			. '</rdf:Description></rdf:RDF></x:xmpmeta>';
+
+		$array = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addSrgb(0)
+				->addBkgd(\pack('nnn', 1, 2, 3))
+				->addText('Title', 'Example')
+				->addItxt('Note', 'Texto', 'es', 'Nota', compressed: true)
+				->addXmp($xml)
+				->addExif(PngBuilder::exifProfile())
+				->build(),
+		)->toArray();
+
+		self::assertSame(800, $array['IHDR']['ImageWidth']);
+		self::assertSame('Perceptual', $array['sRGB']);
+		self::assertSame('1 2 3', $array['bKGD']);
+		self::assertSame('SONY', $array['exif']['IFD0']['Make'] ?? null);
+		self::assertSame('Mi Título', $array['xmp']['dc']['title'] ?? null);
+		self::assertSame([
+			['keyword' => 'Title', 'text' => 'Example', 'chunk' => 'tEXt'],
+			[
+				'keyword' => 'Note',
+				'text' => 'Texto',
+				'language' => 'es',
+				'translatedKeyword' => 'Nota',
+				'compressed' => true,
+				'chunk' => 'iTXt',
+			],
+		], $array['texts']);
+	}
+
+	#[Test]
+	public function an_explicit_empty_registry_disables_all_chunk_decoding(): void
+	{
+		$doc = (new PngMetadataReader(new ChunkDecoderRegistry([])))
+			->read(PngBuilder::create()->build());
+
+		self::assertNull($doc->header);
+	}
+
+	#[Test]
+	public function the_registry_can_be_replaced_with_a_custom_decoder_set(): void
+	{
+		$doc = (new PngMetadataReader(new ChunkDecoderRegistry([new SrgbDecoder()])))
+			->read(PngBuilder::create()->addSrgb(2)->build());
+
+		self::assertNull($doc->header);
+		self::assertSame(RenderingIntent::Saturation, $doc->renderingIntent);
+	}
+
+	#[Test]
+	public function default_constructor_is_lenient(): void
+	{
+		$doc = (new PngMetadataReader())->read(
+			PngBuilder::create()->addSrgb(0)->addSrgb(2)->build(),
+		);
+
+		self::assertSame(RenderingIntent::Perceptual, $doc->renderingIntent);
 	}
 }

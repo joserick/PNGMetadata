@@ -7,6 +7,7 @@ namespace PNGMetadata\Tests\Integration;
 use PNGMetadata\Exception\PngMetadataException;
 use PNGMetadata\PngMetadataReader;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
@@ -31,7 +32,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(\PNGMetadata\Metadata\MetadataDocument::class)]
 final class PngSuiteTest extends TestCase
 {
-	#[\PHPUnit\Framework\Attributes\Test]
+	#[Test]
 	public function every_pngsuite_member_is_parsed_or_fails_as_domain_error(): void
 	{
 		$dir = \getenv('PNGSUITE_DIR');
