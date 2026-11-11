@@ -53,6 +53,22 @@ use PNGMetadata\PngMetadataReader;
 $document = PngMetadataReader::create()->read('Photo.png');
 ```
 
+The reader is **reusable**: it only holds configuration (e.g. strict mode), so create it
+once and read as many images as needed:
+
+```php
+$reader = PngMetadataReader::create();
+
+foreach (['front.png', 'back.png'] as $path) {
+    $document = $reader->read($path);
+    // each call returns an independent MetadataDocument
+}
+
+// strict mode applies to every read() made through that instance
+$strictReader = PngMetadataReader::create(strict: true);
+$checked = $strictReader->read('photo.png');
+```
+
 Access the decoded metadata through typed properties:
 
 ```php
@@ -70,16 +86,104 @@ $document->thumbnailBytes();            // ?string raw EXIF thumbnail, no GD
 Or serialize the whole document:
 
 ```php
-$array = $document->toArray(); // return simple 'Array'
+$array = $document->toArray(); // plain array with the typed structure
 ```
+
+`toArray()` returns a plain array; this representative example covers header, color,
+background, EXIF, XMP and text metadata (the EXIF `FILE` and `COMPUTED` sections are
+omitted for brevity):
+
+```php
+$array = [
+    'IHDR' => [
+        'ImageWidth' => 1024,
+        'ImageHeight' => 768,
+        'BitDepth' => 8,
+        'ColorType' => 'Palette',
+        'Compression' => 'Deflate/Inflate',
+        'Filter' => 'Adaptive',
+        'Interlace' => 'Adam7 Interlace',
+    ],
+    'sRGB' => 'Saturation',
+    'bKGD' => '2',
+    'exif' => [
+        'IFD0' => [
+            'Make' => 'SONY',
+            'Model' => 'ILCE-7M3',
+            'Software' => 'Adobe Photoshop 26.0',
+            'DateTime' => '2026:11:10 18:42:11',
+        ],
+        'EXIF' => [
+            'ExposureTime' => '1/250',
+            'FNumber' => '28/10',
+            'ISOSpeedRatings' => 100,
+            'DateTimeOriginal' => '2026:11:10 18:42:11',
+        ],
+    ],
+    'xmp' => [
+        'dc' => [
+            'title' => 'Sunset over the bay',
+            'creator' => 'José Carreón',
+            'description' => 'Golden hour over the Pacific.',
+        ],
+        'xmp' => [
+            'CreatorTool' => 'Adobe Photoshop 26.0',
+        ],
+        'photoshop' => [
+            'Headline' => 'Golden hour',
+        ],
+    ],
+    'texts' => [
+        [
+            'keyword' => 'Title',
+            'text' => 'Sunset over the bay',
+            'chunk' => 'tEXt',
+        ],
+        [
+            'keyword' => 'Author',
+            'text' => 'José Carreón',
+            'chunk' => 'tEXt',
+        ],
+        [
+            'keyword' => 'Comment',
+            'text' => 'Shot from the pier.',
+            'chunk' => 'tEXt',
+        ],
+        [
+            'keyword' => 'Comment',
+            'text' => 'Edited with a warm tone curve.',
+            'chunk' => 'tEXt',
+        ],
+        [
+            'keyword' => 'Description',
+            'text' => 'Una vista al atardecer',
+            'language' => 'es',
+            'translatedKeyword' => 'Descripción',
+            'chunk' => 'iTXt',
+        ],
+        [
+            'keyword' => 'Copyright',
+            'text' => '© 2026 José Carreón',
+            'language' => 'es',
+            'translatedKeyword' => 'Derechos de autor',
+            'compressed' => true,
+            'chunk' => 'iTXt',
+        ],
+    ],
+];
+```
+
+`texts` groups `tEXt` and `iTXt` entries in file order, so repeated keywords are preserved
+and iTXt entries keep their `language`, `translatedKeyword` and `compressed` fields;
+`IHDR`, `sRGB` and `bKGD` are single-instance chunks and therefore appear as top-level keys.
 
 ### Flexible inputs
 
 The reader accepts a file path, a binary string, or an open stream resource — useful for framework integrations (e.g. Laravel disks):
 
 ```php
-$document = PngMetadataReader::create()->read($binaryString);
-$document = PngMetadataReader::create()->read($streamResource);
+$document = $reader->read($binaryString);
+$document = $reader->read($streamResource);
 ```
 
 ### Strict mode
@@ -131,7 +235,7 @@ Out:
 ### Example 2 - Get a specific value
 
 ```php
-$document = PngMetadataReader::create()->read('Photo.png');
+$document = $reader->read('Photo.png');
 
 echo $document->header?->width;                       // 800
 echo $document->exif['IFD0']['Make'] ?? '';           // SONY
@@ -168,27 +272,6 @@ If you genuinely need an image resource, decode it yourself (this is where GD re
 $image = \imagecreatefromstring($document->thumbnailBytes() ?? ''); // needs ext-gd
 ```
 
-### Is PNG?
-
-Just read it — non-PNG input throws a typed domain exception:
-
-```php
-use PNGMetadata\Exception\PngMetadataException;
-
-try {
-    PngMetadataReader::create()->read('Photo.jpg');
-    echo 'Yes, it is a PNG.';
-} catch (PngMetadataException) {
-    echo 'No, it is not a PNG.';
-}
-```
-
-Or check without parsing anything, with the native function:
-
-```php
-\exif_imagetype('Photo.png') === IMAGETYPE_PNG; // bool
-```
-
 ## Upgrading from v1
 
 **v2 removes the `PNGMetadata` facade (breaking).** Every v1 entry point has a typed equivalent or a small recipe:
@@ -202,7 +285,6 @@ Or check without parsing anything, with the native function:
 | `foreach ($png as $key => $value)` | iterate `$document->toArray()` |
 | `echo $png` (two-column table) | Example 1 flatten snippet |
 | `$png->getThumbnail()` (`\GdImage`) | `$document->thumbnailBytes()` (`?string`) |
-| `PNGMetadata::isPNG($path)` | `read()` + `catch`, or `\exif_imagetype($path) === IMAGETYPE_PNG` |
 | `PNGMetadata::getType($path)` | `\exif_imagetype($path)` |
 | `InvalidArgumentException` codes 101/102/103 | typed exceptions under `PNGMetadata\Exception\PngMetadataException` |
 
@@ -229,11 +311,11 @@ Behavior notes beyond the API shape:
 ## Development
 
 ```bash
-composer test              # unit suite (fast; excludes the `performance` group)
-composer coverage          # unit suite + pcov: text summary and coverage.xml
-php tools/check-coverage.php           # coverage gate (baseline ratchet, fails below it)
-composer test:performance  # memory-bound scenario: 50 MB IDAT iterated lazily
-composer phpstan           # static analysis, level max
+composer test                 # unit suite (fast; excludes the `performance` group)
+composer coverage             # unit suite + pcov: text summary and coverage.xml
+php tools/check-coverage.php  # coverage gate (baseline ratchet, fails below it)
+composer test:performance     # memory-bound scenario: 50 MB IDAT iterated lazily
+composer phpstan              # static analysis, level max
 
 # Real-world corpus (opt-in; third-party images are never committed):
 PNGSUITE_DIR=/path/to/pngsuite composer test:integration
