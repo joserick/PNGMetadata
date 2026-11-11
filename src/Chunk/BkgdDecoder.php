@@ -57,6 +57,22 @@ final class BkgdDecoder implements ChunkDecoderInterface
 			);
 		}
 
+		if ($context->strict && \strlen($data) !== $required) {
+			// Spec §11.3.4.1 fixes the payload size per color type: extra
+			// trailing bytes are a conformance failure in strict mode, while
+			// lenient keeps tolerating them (best-effort leading samples).
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf(
+					'bKGD payload must be exactly %d byte(s) for color type %s, %d given.',
+					$required,
+					$header->colorType->label(),
+					\strlen($data),
+				),
+			);
+		}
+
 		$background = match ($header->colorType) {
 			ColorType::Palette => BackgroundColor::paletteIndex(\ord($data[0])),
 			ColorType::Grayscale, ColorType::GrayscaleWithAlpha => BackgroundColor::grayscale(self::uint16($chunk, $data, 0)),

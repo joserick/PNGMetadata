@@ -50,6 +50,14 @@ is the only public API. The v1→v2 migration map lives in the README
   with PHPStan 2 at level max.
 - tEXt keywords and text are converted from ISO-8859-1 (Latin-1, per spec) to
   UTF-8 on output.
+- **BREAKING**: IHDR validation now also rejects zero image width/height and
+  compression/filter methods other than `0` (spec §11.2.1). Like every IHDR
+  failure this is fatal in both reader modes, so previously-accepted invalid
+  headers now raise `ChunkDecodingException` even in lenient mode.
+- Strict mode is a real conformance gate: unknown critical chunk types
+  (outside IHDR/PLTE/IDAT/IEND/fdAT), bKGD payloads longer than the color type
+  requires, and iTXt compression fields outside the defined domain now raise
+  domain failures. Lenient mode is unchanged for all three.
 
 ### Fixed
 

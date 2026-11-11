@@ -49,7 +49,22 @@ final class PngMetadataReader
 
 			$decoder = $this->registry->decoderFor($chunk->getCode());
 			if ($decoder === null) {
-				continue; // unknown chunks are never an error (spec, ancillary rule)
+				// Unknown ancillary chunks are never an error (spec §5.4).
+				// Unknown *critical* chunks are a conformance failure: strict
+				// reports them (spec §5.4 makes them an error for consumers),
+				// lenient keeps ignoring them.
+				if ($this->strict && $chunk->type->isCritical() && !$chunk->type->isRecognizedCritical()) {
+					throw ChunkDecodingException::forChunk(
+						$chunk->getCode(),
+						$chunk->dataOffset,
+						\sprintf(
+							'unknown critical chunk type "%s"; recognized critical types are IHDR, PLTE, IDAT, IEND, fdAT.',
+							$chunk->getCode(),
+						),
+					);
+				}
+
+				continue;
 			}
 
 			try {

@@ -45,6 +45,16 @@ final class IhdrDecoder implements ChunkDecoderInterface
 		}
 		/** @var array{width: int, height: int, bitDepth: int, colorType: int, compression: int, filter: int, interlace: int} $fields */
 
+		// Spec §11.2.1: dimensions must be non-zero and both methods are 0 for
+		// every conforming image. Like every IHDR failure these are fatal in
+		// both modes: a nonsense header is not usable interpretation context.
+		if ($fields['width'] === 0) {
+			throw new ChunkDecodingException('Invalid IHDR: width must be greater than 0.');
+		}
+		if ($fields['height'] === 0) {
+			throw new ChunkDecodingException('Invalid IHDR: height must be greater than 0.');
+		}
+
 		$colorType = ColorType::tryFrom($fields['colorType'])
 			?? throw new ChunkDecodingException(\sprintf('Unknown IHDR color type %d.', $fields['colorType']));
 
@@ -55,6 +65,13 @@ final class IhdrDecoder implements ChunkDecoderInterface
 				$fields['colorType'],
 				$colorType->label(),
 			));
+		}
+
+		if ($fields['compression'] !== 0) {
+			throw new ChunkDecodingException(\sprintf('Invalid IHDR: compression method must be 0, %d given.', $fields['compression']));
+		}
+		if ($fields['filter'] !== 0) {
+			throw new ChunkDecodingException(\sprintf('Invalid IHDR: filter method must be 0, %d given.', $fields['filter']));
 		}
 
 		$interlace = InterlaceMethod::tryFrom($fields['interlace'])

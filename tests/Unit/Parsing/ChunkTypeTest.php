@@ -83,4 +83,17 @@ final class ChunkTypeTest extends TestCase
 		self::assertFalse($type->equals('IHDR'));
 		self::assertSame('IEND', $type->code);
 	}
+
+	#[Test]
+	public function only_the_five_structural_critical_types_are_recognized(): void
+	{
+		foreach (['IHDR', 'PLTE', 'IDAT', 'IEND', 'fdAT'] as $code) {
+			self::assertTrue(ChunkType::fromBytes($code)->isRecognizedCritical(), $code);
+		}
+
+		// Unknown critical and any ancillary type are not recognized-critical.
+		self::assertFalse(ChunkType::fromBytes('ZsTr')->isRecognizedCritical());
+		self::assertFalse(ChunkType::fromBytes('vpAg')->isRecognizedCritical());
+		self::assertFalse(ChunkType::fromBytes('srgb')->isRecognizedCritical());
+	}
 }

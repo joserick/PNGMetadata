@@ -104,6 +104,22 @@ final class ChunkDecodersTest extends TestCase
 				. PngBuilder::chunk('IEND', ''),
 			'IHDR must be 13 bytes',
 		];
+		yield 'zero width' => [
+			PngBuilder::create()->withIhdr(0, 10, 8, 2)->build(),
+			'width must be greater than 0',
+		];
+		yield 'zero height' => [
+			PngBuilder::create()->withIhdr(10, 0, 8, 2)->build(),
+			'height must be greater than 0',
+		];
+		yield 'compression method 1' => [
+			PngBuilder::create()->withIhdr(10, 10, 8, 2, 1)->build(),
+			'compression method must be 0',
+		];
+		yield 'filter method 1' => [
+			PngBuilder::create()->withIhdr(10, 10, 8, 2, 0, 1)->build(),
+			'filter method must be 0',
+		];
 	}
 
 	/**
@@ -206,6 +222,68 @@ final class ChunkDecodersTest extends TestCase
 		$this->expectException(ChunkDecodingException::class);
 		$this->expectExceptionMessage('only one XMP packet chunk is allowed');
 		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function unknown_critical_chunk_follows_the_policy(): void
+	{
+		// Session fixture a04: "ZsTr" is critical (uppercase first letter) and
+		// outside the recognized set; PNG spec §5.4 makes it a conformance error.
+		$png = PngBuilder::create()->addChunk('ZsTr', 'x')->build();
+
+		$doc = PngMetadataReader::create()->read($png);
+		self::assertSame(800, $doc->header->width);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('unknown critical chunk');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function unknown_ancillary_chunk_never_errors_in_either_mode(): void
+	{
+		$png = PngBuilder::create()->addChunk('vpAg', 'x')->build();
+
+		self::assertSame(800, PngMetadataReader::create()->read($png)->header->width);
+		self::assertSame(800, PngMetadataReader::create(strict: true)->read($png)->header->width);
+	}
+
+	#[Test]
+	public function oversized_bkgd_follows_the_policy(): void
+	{
+		// Session fixtures c06/h05: 4 bytes for Grayscale, which needs exactly 2
+		// (spec §11.3.4.1). Lenient keeps its trailing-byte tolerance.
+		$png = PngBuilder::create()->withIhdr(10, 10, 8, 0)->addBkgd("\x00\x05\x00\x99")->build();
+
+		$doc = PngMetadataReader::create()->read($png);
+		self::assertSame('5', $doc->background?->toString());
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('bKGD payload must be exactly 2');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function itxt_compression_fields_follow_the_policy(): void
+	{
+		// Session fixture e01: flag 2 is outside the defined domain (0..1).
+		$flagged = PngBuilder::create()->addChunk('iTXt', "Note\0\x02\x00\0\0plain text")->build();
+		self::assertSame('plain text', PngMetadataReader::create()->read($flagged)->texts[0]->text);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('compression fields are out of domain');
+		PngMetadataReader::create(strict: true)->read($flagged);
+
+		// flag 1 with a non-zero method: lenient ignores the method as today...
+		$methodOne = PngBuilder::create()
+			->addChunk('iTXt', "Note\0\x01\x01\0\0" . \gzcompress('hello'))
+			->build();
+		self::assertSame('hello', PngMetadataReader::create()->read($methodOne)->texts[0]->text);
+
+		// ...while strict rejects the undefined method (spec §11.3.3.4).
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('compression fields are out of domain');
+		PngMetadataReader::create(strict: true)->read($methodOne);
 	}
 
 	#[Test]

@@ -50,7 +50,19 @@ final class ItxtDecoder implements ChunkDecoderInterface
 			);
 		}
 		$compressionFlag = \ord($data[$offset]);
+		$compressionMethod = \ord($data[$offset + 1]);
 		$offset += 2; // flag + method (method is always 0 and ignored for uncompressed text)
+
+		// Spec §11.3.3.4: the flag is 0 or 1, and a flag of 1 defines only
+		// method 0. Lenient keeps decoding today (flag != 1 means uncompressed);
+		// out-of-domain values are reported only in strict mode.
+		if ($context->strict && ($compressionFlag > 1 || ($compressionFlag === 1 && $compressionMethod !== 0))) {
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				\sprintf('iTXt compression fields are out of domain: flag %d, method %d.', $compressionFlag, $compressionMethod),
+			);
+		}
 
 		$languageTag = $this->readNullTerminated($data, $offset, $chunk, 'language tag');
 		$translatedKeyword = $this->readNullTerminated($data, $offset, $chunk, 'translated keyword');

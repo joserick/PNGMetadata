@@ -15,6 +15,14 @@ namespace PNGMetadata\Parsing;
  */
 final readonly class ChunkType
 {
+	/**
+	 * Critical chunk types every consumer of this library handles
+	 * structurally (IHDR decode, IDAT/fdAT position note, IEND terminator,
+	 * PLTE by spec membership); any other critical type is unrecognized
+	 * (spec §5.4) and a conformance failure in strict mode.
+	 */
+	private const RECOGNIZED_CRITICAL = ['IHDR', 'PLTE', 'IDAT', 'IEND', 'fdAT'];
+
 	private function __construct(
 		public string $code,
 	) {
@@ -37,6 +45,11 @@ final readonly class ChunkType
 	public function isCritical(): bool
 	{
 		return !$this->isAncillary();
+	}
+
+	public function isRecognizedCritical(): bool
+	{
+		return \in_array($this->code, self::RECOGNIZED_CRITICAL, true);
 	}
 
 	public function isPrivate(): bool
