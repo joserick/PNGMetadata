@@ -136,6 +136,78 @@ final class ChunkDecodersTest extends TestCase
 		);
 	}
 
+	/**
+	 * The IHDR-fatal rule guards the header-establishing chunk (the first one)
+	 * only; duplicates elsewhere in the stream are policy-governed decode
+	 * failures (PNG spec §11.2.1: IHDR occurs exactly once, at the start).
+	 */
+	#[Test]
+	public function late_ihdr_does_not_overwrite_the_header_in_lenient_mode(): void
+	{
+		$png = PngBuilder::create()
+			->withIhdr(10, 10, 8, 2)
+			->addText('Title', 'kept')
+			->addIdat(64)
+			->addChunk('IHDR', \pack('NNCCCCC', 640, 480, 8, 2, 0, 0, 0))
+			->build();
+
+		$doc = PngMetadataReader::create()->read($png);
+
+		self::assertSame(10, $doc->header->width);
+		self::assertSame(10, $doc->header->height);
+		self::assertSame('kept', $doc->texts[0]->text);
+	}
+
+	#[Test]
+	public function malformed_late_ihdr_does_not_abort_lenient_extraction(): void
+	{
+		$png = PngBuilder::create()
+			->withIhdr(10, 10, 8, 2)
+			->addText('Title', 'kept')
+			->addIdat(64)
+			->addChunk('IHDR', 'too short')
+			->build();
+
+		$doc = PngMetadataReader::create()->read($png);
+
+		self::assertSame(10, $doc->header->width);
+		self::assertCount(1, $doc->texts);
+	}
+
+	#[Test]
+	public function late_ihdr_is_a_conformance_failure_in_strict_mode(): void
+	{
+		$png = PngBuilder::create()
+			->withIhdr(10, 10, 8, 2)
+			->addIdat(64)
+			->addChunk('IHDR', \pack('NNCCCCC', 640, 480, 8, 2, 0, 0, 0))
+			->build();
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one IHDR chunk');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function empty_first_xmp_packet_still_wins_the_singleton_slot(): void
+	{
+		$empty = '<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>';
+		$filled = '<x:xmpmeta xmlns:x="adobe:ns:meta/">'
+			. '<rdf:RDF xmlns:rdf="http://www.w3.org/1999-02-22-rdf-syntax-ns#">'
+			. '<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>second</dc:title></rdf:Description>'
+			. '</rdf:RDF></x:xmpmeta>';
+		$png = PngBuilder::create()->addXmp($empty)->addXmp($filled)->build();
+
+		// Lenient: the first (well-formed) packet claims the slot even with no
+		// extractable properties; the later one is ignored.
+		self::assertNull(PngMetadataReader::create()->read($png)->xmp);
+
+		// Strict: the duplicate is reported, regardless of the first being empty.
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one XMP packet chunk is allowed');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
 	#[Test]
 	public function truncated_datastream_stays_fatal_in_lenient_mode(): void
 	{

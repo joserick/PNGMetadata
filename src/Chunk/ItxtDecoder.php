@@ -71,10 +71,14 @@ final class ItxtDecoder implements ChunkDecoderInterface
 		}
 
 		if ($keyword === self::XMP_KEYWORD) {
-			$xmp = XmpDecoder::parse($text, $chunk->getCode(), $chunk->dataOffset);
-			if ($xmp !== null) {
-				$builder->setXmp($xmp, $chunk->getCode(), $chunk->dataOffset);
-			}
+			// A well-formed packet claims the singleton slot even without
+			// properties; malformed XML throws first, leaving the slot free
+			// for a later recoverable packet under the lenient policy.
+			$builder->setXmp(
+				XmpDecoder::parse($text, $chunk->getCode(), $chunk->dataOffset),
+				$chunk->getCode(),
+				$chunk->dataOffset,
+			);
 
 			return;
 		}

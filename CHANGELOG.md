@@ -70,6 +70,12 @@ is the only public API. The v1→v2 migration map lives in the README
   sRGB, bKGD and XMP silently kept the last instance).
 - tEXt/iTXt keywords are validated against the spec bounds (1-79 bytes) and
   tEXt payloads must carry the null terminator; violations follow the policy.
+- A duplicated IHDR later in the stream no longer overwrites the header, and a
+  malformed one no longer aborts lenient extraction; IHDR is now first-wins
+  with strict mode reporting the duplicate.
+- The XMP singleton slot is claimed by the first well-formed packet even when
+  it carries no properties, so a later packet can no longer slip past
+  strict-mode duplicate detection.
 
 ### Deprecated
 

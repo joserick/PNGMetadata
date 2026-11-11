@@ -23,6 +23,17 @@ final class IhdrDecoder implements ChunkDecoderInterface
 
 	public function decode(RawChunk $chunk, DecodingContext $context, MetadataBuilder $builder): void
 	{
+		if ($context->header !== null) {
+			// IHDR occurs exactly once, as the first chunk (spec §11.2.1): a
+			// duplicate anywhere else is a policy-governed decode failure -
+			// lenient keeps the original header, strict reports the violation.
+			throw ChunkDecodingException::forChunk(
+				$chunk->getCode(),
+				$chunk->dataOffset,
+				'only one IHDR chunk is allowed; the first instance wins.',
+			);
+		}
+
 		$data = $chunk->data();
 		if (\strlen($data) !== 13) {
 			throw new ChunkDecodingException(\sprintf('IHDR must be 13 bytes, %d given.', \strlen($data)));

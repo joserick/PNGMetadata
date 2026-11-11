@@ -35,8 +35,12 @@ final class PngMetadataReader
 		$reader = PngReader::create($this->strict);
 		$context = new DecodingContext(strict: $this->strict);
 		$builder = new MetadataBuilder($this->strict);
+		$isFirstChunk = true;
 
 		foreach ($reader->chunks($input) as $chunk) {
+			$isHeaderChunk = $isFirstChunk;
+			$isFirstChunk = false;
+
 			if ($chunk->type->equals('IDAT') || $chunk->type->equals('fdAT')) {
 				// PNG 3rd ed. expects eXIf before image data; note the position
 				// before dispatching so later chunks can enforce it in strict mode.
@@ -53,8 +57,11 @@ final class PngMetadataReader
 			} catch (ChunkDecodingException $e) {
 				// Unified failure policy: strict mode reports every violation;
 				// lenient mode omits the chunk and keeps extracting - except for
-				// IHDR, whose failure is fatal because later chunks lose context.
-				if ($this->strict || $chunk->type->equals('IHDR')) {
+				// the IHDR that establishes the context (the first chunk), whose
+				// failure is fatal because later chunks lose interpretation.
+				// Duplicated IHDRs later in the stream are policy-governed
+				// (spec §11.2.1: IHDR occurs exactly once, at the start).
+				if ($this->strict || ($isHeaderChunk && $chunk->type->equals('IHDR'))) {
 					throw $e;
 				}
 			}

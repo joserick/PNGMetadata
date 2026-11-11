@@ -58,9 +58,13 @@ final class MetadataBuilder
 	}
 
 	/**
-	 * @param array<string, mixed> $xmp
+	 * The first *decodable* XMP packet claims the singleton slot even when it
+	 * carries no extractable properties (null), so a later packet cannot
+	 * replace it and strict mode reports the duplicate either way.
+	 *
+	 * @param array<string, mixed>|null $xmp
 	 */
-	public function setXmp(array $xmp, string $chunkCode, int $offset): void
+	public function setXmp(?array $xmp, string $chunkCode, int $offset): void
 	{
 		if (!$this->acceptsSingleton('XMP packet', $chunkCode, $offset)) {
 			return;
