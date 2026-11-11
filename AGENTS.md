@@ -130,6 +130,7 @@ composer coverage  # unit suite with pcov: text summary + coverage.xml
 php tools/check-coverage.php  # coverage gate: fails below the committed BASELINE
 composer test:performance      # heavy memory-bound scenario (50 MB IDAT)
 composer test:integration      # PngSuite corpus when PNGSUITE_DIR is set (skips otherwise)
+composer test:mutation         # Infection mutation gate (unit suite; needs pcov, run in Docker)
 composer phpstan   # PHPStan level max
 composer validate  # composer.json schema check
 ```

@@ -13,7 +13,7 @@ declare(strict_types=1);
  */
 
 const DEFAULT_CLOVER = 'coverage.xml';
-const BASELINE = 89.0;
+const BASELINE = 95.0;
 
 $file = $argv[1] ?? DEFAULT_CLOVER;
 $min  = isset($argv[2]) && is_numeric($argv[2]) ? (float) $argv[2] : BASELINE;

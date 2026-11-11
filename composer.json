@@ -29,9 +29,15 @@
 		"ext-zlib": "*"
 	},
 	"require-dev": {
+		"infection/infection": "^0.35",
 		"phpstan/phpstan": "^2.0",
 		"phpunit/phpunit": "^11.0",
 		"roave/security-advisories": "dev-latest"
+	},
+	"config": {
+		"allow-plugins": {
+			"infection/extension-installer": false
+		}
 	},
 	"autoload": {
 		"psr-4": {
@@ -48,7 +54,11 @@
 		"test:performance": "php -d memory_limit=512M vendor/bin/phpunit --testsuite unit --group performance",
 		"test:integration": "vendor/bin/phpunit --testsuite integration",
 		"coverage": "vendor/bin/phpunit --testsuite unit --coverage-text --coverage-clover coverage.xml",
-		"phpstan": "vendor/bin/phpstan analyse -c phpstan.neon --no-progress"
+		"phpstan": "vendor/bin/phpstan analyse -c phpstan.neon --no-progress",
+		"test:mutation": [
+			"php -d pcov.enabled=1 vendor/bin/phpunit --testsuite unit --coverage-xml .phpunit.mut-coverage/coverage-xml --log-junit .phpunit.mut-coverage/junit.xml",
+			"vendor/bin/infection --skip-initial-tests --coverage=.phpunit.mut-coverage --min-msi=96 --min-covered-msi=96 --threads=4"
+		]
 	},
 	"minimum-stability": "stable",
 	"extra": {
