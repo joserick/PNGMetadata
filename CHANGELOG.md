@@ -5,7 +5,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - Unreleased
+## [2.0.0-beta.1] - 2026-11-15
+
+> First public pre-release of v2 for testing. The API may still change before
+> `2.0.0` stable; feedback goes through the `v2-beta` issue template/label.
 
 Version 2 is a ground-up rewrite on a layered architecture with a typed,
 immutable API. This is a **breaking release**: the v1 `PNGMetadata` array
@@ -105,4 +108,4 @@ is the only public API. The v1→v2 migration map lives in the README
   (the `suggest` entry is gone); embedded thumbnails are served as bytes via
   `MetadataDocument::thumbnailBytes()`.
 
-[2.0.0]: https://github.com/joserick/PNGMetadata/compare/v1.0.0...v2.0.0
+[2.0.0-beta.1]: https://github.com/joserick/PNGMetadata/compare/v0.2.8...v2.0.0-beta.1

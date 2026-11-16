@@ -12,6 +12,14 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 
 Version 2 is a ground-up rewrite on a layered architecture with a **typed, immutable API**. v2 is a **breaking release**: the v1 `PNGMetadata` array facade is gone and the typed core is now the only interface. The [1.x line](https://github.com/joserick/PNGMetadata) stays available (security fixes only) for anyone who needs the old API. See [Upgrading from v1](#upgrading-from-v1) for the migration map.
 
+> **Status: `2.0.0-beta.1` pre-release.** v2 is available for testing but is
+> not yet the default stable line. Install the beta explicitly (see
+> [Installation](#installation)); the supported chunk set is `IHDR`, `tEXt`,
+> `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`. Phase 2 chunks (`zTXt`, `iCCP`,
+> `gAMA`, `cHRM`, `tRNS`, `tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
+> (APNG/HDR signaling) are follow-ups. API changes are still possible before
+> `2.0.0` stable; feedback goes through the `v2-beta` issue template/label.
+
 - **PHP 8.3+** with typed, immutable value objects and enums.
 - **Layered core**: binary parsing → chunk decoders → typed domain model, with dependencies pointing inward.
 - **Flexible input**: file path, binary string, or stream resource.
@@ -33,11 +41,15 @@ See the [CHANGELOG](CHANGELOG.md) for the full list.
 
 ## Installation
 
-Use the package manager [Composer](https://getcomposer.org/) to install PNGMetadata.
+v2 is currently distributed as a pre-release tag. Install it explicitly until
+`2.0.0` stable is published:
 
 ```bash
-$ composer require joserick/png-metadata
+$ composer require joserick/png-metadata:2.0.0-beta.1
 ```
+
+The unversioned `composer require joserick/png-metadata` command continues to
+install the v1 stable line from `master`.
 
 ## Use
 
