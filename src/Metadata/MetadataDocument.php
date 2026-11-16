@@ -10,9 +10,10 @@ namespace PNGMetadata\Metadata;
 final readonly class MetadataDocument
 {
 	/**
-	 * @param TextEntry[] $texts
-	 * @param array<string, mixed>|null $xmp
-	 * @param array<string, mixed>|null $exif
+	 * @param TextEntry[] $texts Entries in file order; repeated keywords are preserved.
+	 * @param array<string, mixed>|null $xmp Structured XMP properties grouped by namespace.
+	 * @param array<string, mixed>|null $exif EXIF sections as returned by exif_read_data().
+	 * @param string|null $exifRaw Raw TIFF payload backing thumbnailBytes().
 	 */
 	public function __construct(
 		public ?HeaderData $header,
@@ -27,6 +28,9 @@ final readonly class MetadataDocument
 
 	/**
 	 * Serialize to a plain array using the typed structure.
+	 *
+	 * Sections that were not decoded are omitted rather than emitted as null;
+	 * texts keep their file order.
 	 *
 	 * @return array<string, mixed>
 	 */
@@ -66,7 +70,8 @@ final readonly class MetadataDocument
 	}
 
 	/**
-	 * Embedded EXIF thumbnail as raw image bytes, when present.
+	 * Embedded EXIF thumbnail as raw image bytes, or null when the profile has
+	 * no thumbnail. Returned as bytes, never as a GD resource (ADR-005).
 	 */
 	public function thumbnailBytes(): ?string
 	{

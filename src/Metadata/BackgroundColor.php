@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace PNGMetadata\Metadata;
 
 /**
- * Decoded bKGD chunk. Which fields are set depends on the IHDR color type.
+ * Decoded bKGD chunk. Exactly one variant is populated, chosen by the IHDR
+ * color type: a palette index, a gray sample, or an RGB triple.
  */
 final readonly class BackgroundColor
 {
@@ -18,23 +19,33 @@ final readonly class BackgroundColor
 	) {
 	}
 
+	/**
+	 * Background for indexed-color images (single palette index).
+	 */
 	public static function paletteIndex(int $index): self
 	{
 		return new self($index, null, null, null, null);
 	}
 
+	/**
+	 * Background for grayscale images, with or without alpha.
+	 */
 	public static function grayscale(int $gray): self
 	{
 		return new self(null, $gray, null, null, null);
 	}
 
+	/**
+	 * Background for truecolor images, with or without alpha.
+	 */
 	public static function rgb(int $red, int $green, int $blue): self
 	{
 		return new self(null, null, $red, $green, $blue);
 	}
 
 	/**
-	 * Space-separated sample values, matching the v1 output format.
+	 * Space-separated sample values in field order, used by
+	 * MetadataDocument::toArray() for the bKGD key.
 	 */
 	public function toString(): string
 	{

@@ -21,6 +21,12 @@ final readonly class HeaderData
 	}
 
 	/**
+	 * Plain-array form of the header; the key names are the public
+	 * serialization contract.
+	 *
+	 * Compression and filter always read as "Deflate/Inflate" and "Adaptive"
+	 * because PNG defines only method 0 for both (spec section 11.2.1).
+	 *
 	 * @return array<string, int|string>
 	 */
 	public function toArray(): array

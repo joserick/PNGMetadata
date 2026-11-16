@@ -16,7 +16,7 @@ enum ColorType: int
 	case RGBWithAlpha = 6;
 
 	/**
-	 * Human-readable name matching the v1 output values.
+	 * Human-readable name used by HeaderData::toArray().
 	 */
 	public function label(): string
 	{
@@ -43,6 +43,9 @@ enum ColorType: int
 		};
 	}
 
+	/**
+	 * Whether this color type accepts the given bit depth (spec section 6.1).
+	 */
 	public function allowsBitDepth(int $bitDepth): bool
 	{
 		return \in_array($bitDepth, $this->allowedBitDepths(), true);

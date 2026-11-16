@@ -13,7 +13,7 @@ enum InterlaceMethod: int
 	case Adam7 = 1;
 
 	/**
-	 * Human-readable name matching the v1 output values.
+	 * Human-readable name used by HeaderData::toArray().
 	 */
 	public function label(): string
 	{

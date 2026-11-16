@@ -15,7 +15,7 @@ enum RenderingIntent: int
 	case AbsoluteColorimetric = 3;
 
 	/**
-	 * Human-readable name matching the v1 output values.
+	 * Human-readable name used by MetadataDocument::toArray().
 	 */
 	public function label(): string
 	{
@@ -28,7 +28,8 @@ enum RenderingIntent: int
 	}
 
 	/**
-	 * Resolve a raw byte; out-of-range values yield null (reported as "Unknown").
+	 * Resolve a raw sRGB intent byte; null means the caller must report a
+	 * decode failure (see SrgbDecoder).
 	 */
 	public static function fromByte(int $byte): ?self
 	{
