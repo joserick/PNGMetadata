@@ -7,6 +7,35 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 
 ![PNGMetadata.gif](https://joserick.com/docs/pngmetadata/PNGMetadata.gif)
 ## Enjoying this package? [!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/joserick)
+## 🧪 v2.0.0-beta.1 — public testing release
+
+The v2 line is a ground-up rewrite with a typed, immutable API. It is **not**
+the default version yet: this `master` branch keeps v1 stable, while v2 lives
+on the [`2.x` branch](https://github.com/joserick/PNGMetadata/tree/2.x) and the
+[`v2.0.0-beta.1` tag](https://github.com/joserick/PNGMetadata/tree/v2.0.0-beta.1).
+
+Requirements: PHP 8.3+, `ext-exif`, `ext-mbstring`, `ext-xml`, `ext-zlib`. GD is
+no longer required.
+
+```bash
+$ composer require joserick/png-metadata:2.0.0-beta.1
+```
+
+**Scope of this beta:** `IHDR`, `tEXt`, `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`.
+The Phase 2 chunks (`zTXt`, `iCCP`, `gAMA`, `cHRM`, `tRNS`, `tIME`, `pHYs`,
+`sBIT`, `PLTE`) and Phase 3 (APNG/HDR signaling) are follow-ups and are not
+part of this beta.
+
+**Feedback:** use the *v2 Beta Feedback* issue template (or prefix the issue
+title with `[v2-beta]`) and include the version, PHP version, input type
+(path/string/stream), reader mode (lenient/strict), and expected vs. actual
+behavior. The API may still change before `2.0.0` stable.
+
+Read the [v2 README](https://github.com/joserick/PNGMetadata/blob/2.x/README.md),
+the [upgrade guide](https://github.com/joserick/PNGMetadata/blob/2.x/README.md#upgrading-from-v1),
+the [CHANGELOG](https://github.com/joserick/PNGMetadata/blob/2.x/CHANGELOG.md)
+and the [documentation](https://github.com/joserick/PNGMetadata/tree/2.x/docs/en).
+
 ## Requirements
 
 - PHP >= 7.4
