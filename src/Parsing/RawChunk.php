@@ -13,6 +13,9 @@ namespace PNGMetadata\Parsing;
 final readonly class RawChunk
 {
 	/**
+	 * @param int $length Declared payload length in bytes.
+	 * @param int $dataOffset Absolute stream offset where the payload starts.
+	 * @param int $storedCrc CRC-32 as stored in the chunk trailer.
 	 * @param resource $stream Stream positioned anywhere; data() seeks to
 	 *                         $dataOffset before reading.
 	 */
@@ -66,6 +69,9 @@ final readonly class RawChunk
 
 	/**
 	 * Compute the CRC-32 over type + data, as defined by the PNG spec (section 5.5).
+	 *
+	 * This materializes the payload, so strict-mode validation also reads
+	 * image data (ADR-002).
 	 */
 	public function computeCrc(): int
 	{

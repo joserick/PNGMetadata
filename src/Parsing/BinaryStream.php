@@ -13,6 +13,12 @@ use PNGMetadata\Exception\InvalidPngException;
 final class BinaryStream
 {
 	/**
+	 * Normalize any supported input into a seekable stream at byte 0.
+	 *
+	 * A string is treated as a path only when it names an existing file;
+	 * otherwise it is read as binary content. Non-seekable resources (pipes,
+	 * sockets) are buffered so the parser can seek freely.
+	 *
 	 * @param string|resource $input File path, binary string, or open stream resource.
 	 * @return resource A seekable binary stream, positioned at byte 0.
 	 */

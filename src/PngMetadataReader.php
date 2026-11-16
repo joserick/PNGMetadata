@@ -16,18 +16,33 @@ use PNGMetadata\Parsing\PngReader;
  */
 final class PngMetadataReader
 {
+	/**
+	 * @param ChunkDecoderRegistry $registry Decoder set; defaults to the built-in registry.
+	 * @param bool $strict Enable CRC, ordering and decode-conformance validation.
+	 */
 	public function __construct(
 		private readonly ChunkDecoderRegistry $registry = new ChunkDecoderRegistry(),
 		private readonly bool $strict = false,
 	) {
 	}
 
+	/**
+	 * Create a reader, optionally in strict (conformance-checking) mode.
+	 */
 	public static function create(bool $strict = false): self
 	{
 		return new self(strict: $strict);
 	}
 
 	/**
+	 * Read a PNG into a typed document.
+	 *
+	 * Pipeline: PngReader frames chunks lazily -> the registry selects a
+	 * decoder -> the builder accumulates -> the document is frozen. Lenient
+	 * mode (default) skips malformed chunks and keeps extracting; strict mode
+	 * rethrows them. Because IHDR is the interpretation context for later
+	 * chunks, a failure in the first IHDR is fatal in both modes.
+	 *
 	 * @param string|resource $input File path, binary string, or stream resource.
 	 */
 	public function read(mixed $input): MetadataDocument

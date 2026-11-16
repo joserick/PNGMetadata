@@ -24,11 +24,17 @@ final class PngReader
 	) {
 	}
 
+	/**
+	 * Create a reader; strict mode enables per-chunk CRC and ordering checks.
+	 */
 	public static function create(bool $strict = false): self
 	{
 		return new self($strict);
 	}
 
+	/**
+	 * Convenience factory for strict mode.
+	 */
 	public static function strict(): self
 	{
 		return new self(true);
@@ -36,6 +42,10 @@ final class PngReader
 
 	/**
 	 * Iterate over the chunks of a PNG datastream.
+	 *
+	 * Only chunk headers are read here; payload access stays lazy through
+	 * RawChunk (ADR-002). Streams opened for a path or string input are closed
+	 * when iteration ends; a caller-supplied resource is left open.
 	 *
 	 * @param string|resource $input File path, binary string, or stream resource.
 	 * @return Generator<int, RawChunk> Chunks in file order, ending with IEND.
@@ -47,6 +57,7 @@ final class PngReader
 	public function chunks(mixed $input): Generator
 	{
 		$stream = BinaryStream::open($input);
+		// Only close streams this reader opened; caller resources stay theirs.
 		$ownsStream = !\is_resource($input);
 
 		try {
@@ -107,7 +118,11 @@ final class PngReader
 	}
 
 	/**
+	 * Frame one chunk: read the 8-byte header, skip the payload and consume
+	 * its CRC. The payload is not read here, only located for lazy access.
+	 *
 	 * @param resource $stream
+	 * @return RawChunk|null Null only at a clean EOF before a chunk header.
 	 */
 	private function readChunk(mixed $stream): ?RawChunk
 	{
