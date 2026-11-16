@@ -13,8 +13,7 @@ use PNGMetadata\Parsing\RawChunk;
  *
  * The payload is validated against the TIFF magic bytes before decoding.
  * Every failure raises ChunkDecodingException; the reader's unified policy
- * omits the section in lenient mode (net behavior unchanged from before) and
- * reports it in strict mode.
+ * omits the section in lenient mode and reports it in strict mode.
  */
 final class ExifDecoder implements ChunkDecoderInterface
 {
@@ -46,6 +45,8 @@ final class ExifDecoder implements ChunkDecoderInterface
 			);
 		}
 
+		// exif_read_data() needs a seekable stream and expects the raw TIFF
+		// block, so the payload is copied into php://temp as-is.
 		$stream = @\fopen('php://temp', 'r+b');
 		if ($stream === false) {
 			throw ChunkDecodingException::forChunk(

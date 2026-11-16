@@ -14,6 +14,9 @@ use PNGMetadata\Exception\ChunkDecodingException;
  * mode reports it; lenient mode omits the packet without aborting the rest
  * of the extraction). A well-formed packet with no extractable properties
  * returns null - an empty XMP document is not a violation.
+ *
+ * Properties are grouped by namespace prefix; structural namespaces
+ * (rdf, x, xml, xmlns) are wrapper plumbing and are not exposed.
  */
 final class XmpDecoder
 {
@@ -41,6 +44,8 @@ final class XmpDecoder
 			throw ChunkDecodingException::forChunk($code, $offset, 'XMP packet is not well-formed XML.');
 		}
 
+		// rdf/x wrap the RDF graph and xml/xmlns are structural; only real
+		// property namespaces become top-level keys in the result.
 		$namespaces = [];
 		foreach (self::collectNamespaces($dom) as $prefix => $uri) {
 			if ($prefix === 'xml' || $prefix === 'xmlns' || $prefix === 'rdf' || $prefix === 'x') {

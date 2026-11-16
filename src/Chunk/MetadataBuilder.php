@@ -12,7 +12,8 @@ use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
 
 /**
- * Mutable accumulator used while decoding chunks; frozen into an immutable
+ * The single accumulator used while decoding chunks (ADR-003): decoders never
+ * talk to each other, they only write here. Frozen into an immutable
  * MetadataDocument once the stream has been consumed.
  */
 final class MetadataBuilder
@@ -42,6 +43,10 @@ final class MetadataBuilder
 	) {
 	}
 
+	/**
+	 * Written by IhdrDecoder; the header also reaches dependent decoders
+	 * through DecodingContext.
+	 */
 	public function setHeader(HeaderData $header): void
 	{
 		$this->header = $header;
@@ -100,6 +105,9 @@ final class MetadataBuilder
 		$this->background = $background;
 	}
 
+	/**
+	 * Freeze the accumulated state into the document exposed to consumers.
+	 */
 	public function build(): MetadataDocument
 	{
 		return new MetadataDocument(

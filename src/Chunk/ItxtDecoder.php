@@ -105,6 +105,13 @@ final class ItxtDecoder implements ChunkDecoderInterface
 		));
 	}
 
+	/**
+	 * Read a NUL-terminated field and advance $offset past the separator.
+	 *
+	 * A missing separator is a malformed payload, not an empty field.
+	 *
+	 * @throws ChunkDecodingException
+	 */
 	private function readNullTerminated(string $data, int &$offset, RawChunk $chunk, string $field): string
 	{
 		$end = \strpos($data, "\0", $offset);
