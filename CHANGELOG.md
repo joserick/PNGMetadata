@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.2] - 2026-11-19
+
+### Added
+
+- `zTXt` text chunk decoding: Latin-1 keyword and zlib-compressed text are
+  inflated and converted to UTF-8, exposed through the existing `texts` array
+  with `chunkType: 'zTXt'` and `compressed: true`. Multiple entries are kept in
+  file order; malformed payloads follow the unified lenient/strict policy.
+
+### Fixed
+
+- XMP packets that use the default XML namespace no longer return `null`:
+  unprefixed properties are grouped under `xmp['default']`, and elements with
+  no namespace are not misattributed to that group.
+
 ## [2.0.0-beta.1] - 2026-11-15
 
 > First public pre-release of v2 for testing. The API may still change before
@@ -108,4 +123,5 @@ is the only public API. The v1→v2 migration map lives in the README
   (the `suggest` entry is gone); embedded thumbnails are served as bytes via
   `MetadataDocument::thumbnailBytes()`.
 
+[2.0.0-beta.2]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/joserick/PNGMetadata/compare/v0.2.8...v2.0.0-beta.1

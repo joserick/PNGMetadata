@@ -12,10 +12,10 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 
 Version 2 is a ground-up rewrite on a layered architecture with a **typed, immutable API**. v2 is a **breaking release**: the v1 `PNGMetadata` array facade is gone and the typed core is now the only interface. The [1.x line](https://github.com/joserick/PNGMetadata) stays available (security fixes only) for anyone who needs the old API. See [Upgrading from v1](#upgrading-from-v1) for the migration map.
 
-> **Status: `2.0.0-beta.1` pre-release.** v2 is available for testing but is
+> **Status: `2.0.0-beta.2` pre-release.** v2 is available for testing but is
 > not yet the default stable line. Install the beta explicitly (see
 > [Installation](#installation)); the supported chunk set is `IHDR`, `tEXt`,
-> `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`. Phase 2 chunks (`zTXt`, `iCCP`,
+> `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`. Phase 2 chunks (`iCCP`,
 > `gAMA`, `cHRM`, `tRNS`, `tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
 > (APNG/HDR signaling) are follow-ups. API changes are still possible before
 > `2.0.0` stable; feedback goes through the `v2-beta` issue template/label.
@@ -45,7 +45,7 @@ v2 is currently distributed as a pre-release tag. Install it explicitly until
 `2.0.0` stable is published:
 
 ```bash
-$ composer require joserick/png-metadata:2.0.0-beta.1
+$ composer require joserick/png-metadata:2.0.0-beta.2
 ```
 
 The unversioned `composer require joserick/png-metadata` command continues to
@@ -88,7 +88,7 @@ $document->header?->width;              // int
 $document->header?->colorType;          // ColorType enum
 $document->header?->interlaceMethod;    // InterlaceMethod enum
 $document->renderingIntent?->label();   // 'Perceptual', ...
-$document->texts;                       // TextEntry[] (tEXt + iTXt, file order)
+$document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt, file order)
 $document->xmp;                         // ?array structured XMP
 $document->exif;                        // ?array decoded EXIF sections
 $document->background;                  // ?BackgroundColor
