@@ -64,6 +64,11 @@ input (path|string|stream)
 - **Lazy payloads:** `RawChunk::data()` seeks on demand and restores the cursor, so
   iterating a large image costs memory proportional to chunk *headers* only. Never load
   IDAT/fdAT eagerly. `data()` must stay position-neutral.
+- **Bounded text inflation:** `zTXt` and compressed `iTXt` share a cumulative inflation
+  budget per `read()` (default 16 MiB, configurable via
+  `PngMetadataReader::create(maxInflatedBytes: ...)`). Never call `gzuncompress()` directly
+  in a decoder; go through `DecodingContext::$inflater` so zlib bombs cannot bypass the
+  budget.
 - **IHDR as context:** some chunks (bKGD, and in future tRNS) cannot be interpreted
   without the IHDR color type. `IhdrDecoder` writes into `DecodingContext`; later
   decoders read it via `requireHeader()`.

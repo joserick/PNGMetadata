@@ -74,6 +74,8 @@ Es idéntico a `tEXt` en contenido, pero el texto se comprime con **zlib/deflate
 
 `ZtxtDecoder` busca el primer `\0`, valida la keyword de 1-79 bytes, exige el método de compresión `0`, infla los bytes restantes y después convierte keyword y texto de Latin-1 a UTF-8. El `TextEntry` resultante conserva `chunkType = 'zTXt'` y `compressed = true`; los chunks repetidos se preservan en orden de archivo.
 
+El texto comprimido se infla bajo un **presupuesto acumulado de 16 MiB por llamada a `read()`**, compartido por `zTXt` e `iTXt` comprimido. Esto evita que un zlib bomb pequeño agote la memoria. Los payloads que superan el presupuesto se omiten en modo lenient y lanzan `ChunkDecodingException` en modo estricto. El presupuesto se configura con `PngMetadataReader::create(maxInflatedBytes: ...)`.
+
 ## iTXt — texto internacional (y el hogar del XMP)
 
 El más completo. Pensado para **Unicode** y múltiples idiomas:

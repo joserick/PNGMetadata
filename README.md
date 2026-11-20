@@ -208,6 +208,24 @@ when you need spec-compliance checking:
 $document = PngMetadataReader::create(strict: true)->read('Photo.png');
 ```
 
+### Compressed text budget
+
+`zTXt` and compressed `iTXt` payloads are inflated with a **per-read budget**
+of 16 MiB by default. The budget is cumulative across every compressed text
+chunk in one `read()`, so a file cannot multiply memory use with many small
+compressed chunks. A chunk that cannot be inflated within the remaining budget
+follows the normal lenient/strict policy.
+
+Consumers with legitimately larger metadata can raise the limit explicitly:
+
+```php
+$reader = PngMetadataReader::create(maxInflatedBytes: 32 * 1024 * 1024);
+$document = $reader->read('Photo.png');
+```
+
+The value must be greater than zero; `0` and negative values are rejected at
+construction.
+
 ## Examples
 
 ### Example 1 - All

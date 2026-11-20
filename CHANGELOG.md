@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.3] - Unreleased
+
+### Security
+
+- Bound `zTXt` and compressed `iTXt` inflation with a cumulative, per-read
+  budget (16 MiB by default), preventing zlib-bomb payloads from exhausting
+  memory. A chunk that exceeds the remaining budget follows the unified
+  lenient/strict policy. The budget is configurable through
+  `PngMetadataReader::create(maxInflatedBytes: ...)`.
+
 ## [2.0.0-beta.2] - 2026-11-19
 
 ### Added
@@ -123,5 +133,6 @@ is the only public API. The v1→v2 migration map lives in the README
   (the `suggest` entry is gone); embedded thumbnails are served as bytes via
   `MetadataDocument::thumbnailBytes()`.
 
+[2.0.0-beta.3]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.1...v2.0.0-beta.2
 [2.0.0-beta.1]: https://github.com/joserick/PNGMetadata/compare/v0.2.8...v2.0.0-beta.1

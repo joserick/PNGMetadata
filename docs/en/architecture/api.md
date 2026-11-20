@@ -45,6 +45,16 @@ $document = PngMetadataReader::create(strict: true)->read('photo.png');
 
 Validates each chunk's CRC-32 and ordering rules (IHDR first, IEND last), plus decode conformance: malformed chunks, duplicated singletons, and eXIf placed after the first IDAT raise a typed exception naming the chunk and its offset. Useful for conformance, but slower.
 
+## Compressed text budget
+
+`zTXt` and compressed `iTXt` text is inflated under a cumulative budget for each `read()` call, 16 MiB by default. The limit protects the process from zlib bombs while leaving normal metadata untouched. A chunk that would exceed the remaining budget is omitted in lenient mode and raises a `ChunkDecodingException` in strict mode.
+
+```php
+$reader = PngMetadataReader::create(maxInflatedBytes: 32 * 1024 * 1024);
+```
+
+The budget must be greater than zero; invalid values are rejected with `InvalidArgumentException`.
+
 ## Exceptions
 
 The error contract is the typed hierarchy under `PNGMetadata\Exception\PngMetadataException`:
