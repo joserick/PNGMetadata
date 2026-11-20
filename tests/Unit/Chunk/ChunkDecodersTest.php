@@ -604,6 +604,56 @@ final class ChunkDecodersTest extends TestCase
 	}
 
 	#[Test]
+	public function it_parses_xmp_from_the_default_namespace(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addXmp('<xmp xmlns="urn:default"><title>Hola</title></xmp>')
+				->build(),
+		);
+
+		self::assertSame('Hola', $doc->xmp['default']['title'] ?? null);
+	}
+
+	#[Test]
+	public function it_keeps_default_and_prefixed_xmp_namespaces_separate(): void
+	{
+		$xml = '<xmp xmlns="urn:default" xmlns:dc="http://purl.org/dc/elements/1.1/">'
+			. '<title>Hola</title><dc:creator>Ana</dc:creator></xmp>';
+
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addXmp($xml)->build(),
+		);
+
+		self::assertSame('Hola', $doc->xmp['default']['title'] ?? null);
+		self::assertSame('Ana', $doc->xmp['dc']['creator'] ?? null);
+	}
+
+	#[Test]
+	public function elements_without_a_namespace_are_not_grouped_under_default(): void
+	{
+		$xml = '<xmp xmlns="urn:default"><title>Hola</title>'
+			. '<plain xmlns="">Ignored</plain></xmp>';
+
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addXmp($xml)->build(),
+		);
+
+		self::assertSame('Hola', $doc->xmp['default']['title'] ?? null);
+		self::assertArrayNotHasKey('plain', $doc->xmp['default'] ?? []);
+	}
+
+	#[Test]
+	public function xmp_without_any_namespace_is_not_exposed(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addXmp('<xmp><title>Hola</title></xmp>')->build(),
+		);
+
+		self::assertNull($doc->xmp);
+	}
+
+	#[Test]
 	public function xmp_extraction_handles_namespaces_nesting_and_whitespace(): void
 	{
 		$xml = '<x:xmpmeta xmlns:x="adobe:ns:meta/">'

@@ -58,11 +58,11 @@ The same date can be in EXIF (`eXIf`), in XMP (`exif:DateTimeOriginal`) and in `
 1. Receives the XML text (already extracted by `ItxtDecoder`).
 2. Loads it with `DOMDocument` (PHP's XML extension).
 3. Walks the elements with `getElementsByTagNameNS('*', '*')`.
-4. Groups values by namespace prefix.
+4. Groups values by namespace prefix; properties in the default namespace are grouped under `default`.
 
 ```php
 // Usage
-$document->xmp; // ['dc' => ['title' => 'My Title', ...], ...]
+$document->xmp; // ['dc' => ['title' => 'My Title', ...], 'default' => [...], ...]
 ```
 
 ### Failure policy

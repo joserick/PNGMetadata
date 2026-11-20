@@ -56,7 +56,13 @@ final class XmpDecoder
 
 		$result = [];
 		foreach ($dom->getElementsByTagNameNS('*', '*') as $element) {
-			$prefix = $element->prefix !== '' ? $element->prefix : 'default';
+			// An unprefixed element can be in the default namespace or in no
+			// namespace at all (e.g. an xmlns="" escape); only the former is
+			// a property we can group.
+			if ($element->namespaceURI === null) {
+				continue;
+			}
+			$prefix = self::normalizePrefix($element->prefix);
 			if (!isset($namespaces[$prefix])) {
 				continue;
 			}
@@ -79,10 +85,21 @@ final class XmpDecoder
 		$xpath = new \DOMXPath($dom);
 		foreach ($xpath->query('//namespace::*') ?: [] as $node) {
 			if ($node instanceof \DOMNameSpaceNode && \is_string($node->nodeValue)) {
-				$namespaces[$node->prefix] = $node->nodeValue;
+				$namespaces[self::normalizePrefix($node->prefix)] = $node->nodeValue;
 			}
 		}
 
 		return $namespaces;
+	}
+
+	/**
+	 * DOM reports the default namespace prefix as '' (and PHP 8.5 stubs type
+	 * the property as ?string); the public shape groups it under 'default'.
+	 */
+	private static function normalizePrefix(?string $prefix): string
+	{
+		$prefix = (string) $prefix;
+
+		return $prefix === '' ? 'default' : $prefix;
 	}
 }

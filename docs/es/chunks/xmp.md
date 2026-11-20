@@ -58,11 +58,11 @@ La misma fecha puede estar en EXIF (`eXIf`), en XMP (`exif:DateTimeOriginal`) y 
 1. Recibe el texto XML (ya extraído por `ItxtDecoder`).
 2. Lo carga con `DOMDocument` (la extensión XML de PHP).
 3. Recorre los elementos con `getElementsByTagNameNS('*', '*')`.
-4. Agrupa los valores por prefijo de namespace.
+4. Agrupa los valores por prefijo de namespace; las propiedades en el namespace por defecto se agrupan bajo `default`.
 
 ```php
 // Uso
-$documento->xmp; // ['dc' => ['title' => 'Mi Título', ...], ...]
+$documento->xmp; // ['dc' => ['title' => 'Mi Título', ...], 'default' => [...], ...]
 ```
 
 ### Política de fallos
