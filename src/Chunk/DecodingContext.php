@@ -10,7 +10,8 @@ use PNGMetadata\Metadata\HeaderData;
 /**
  * Context passed to chunk decoders: chunks decoded earlier in the stream
  * that later decoders need (e.g., bKGD interpretation depends on IHDR),
- * plus stream-position facts (image data seen) and the reader mode.
+ * plus stream-position facts (image data seen), the reader mode, and the
+ * per-read compressed-text budget.
  */
 final class DecodingContext
 {
@@ -19,6 +20,7 @@ final class DecodingContext
 	public function __construct(
 		public ?HeaderData $header = null,
 		public readonly bool $strict = false,
+		public readonly BoundedInflater $inflater = new BoundedInflater(),
 	) {
 	}
 

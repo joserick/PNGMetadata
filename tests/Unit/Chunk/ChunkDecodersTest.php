@@ -408,7 +408,7 @@ final class ChunkDecodersTest extends TestCase
 		];
 		yield 'corrupt zlib' => [
 			"Title\0\x00not-zlib-data",
-			'zTXt text is compressed with zlib but inflation failed',
+			'zlib inflation failed or exceeded',
 		];
 	}
 
@@ -426,6 +426,97 @@ final class ChunkDecodersTest extends TestCase
 		} catch (ChunkDecodingException $e) {
 			self::assertStringContainsString($message, $e->getMessage());
 		}
+	}
+
+	#[Test]
+	public function configured_ztxt_inflation_budget_accepts_text_at_the_boundary(): void
+	{
+		$png = PngBuilder::create()->addZtxt('Title', 'hello')->build();
+
+		$doc = PngMetadataReader::create(maxInflatedBytes: 5)->read($png);
+
+		self::assertSame('hello', $doc->texts[0]->text);
+	}
+
+	#[Test]
+	public function ztxt_over_the_inflation_budget_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->addZtxt('Title', 'hello')->build();
+
+		self::assertSame(
+			[],
+			PngMetadataReader::create(maxInflatedBytes: 4)->read($png)->texts,
+		);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte text budget');
+		PngMetadataReader::create(strict: true, maxInflatedBytes: 4)->read($png);
+	}
+
+	#[Test]
+	public function compressed_itxt_over_the_inflation_budget_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()
+			->addItxt('Note', 'hello', compressed: true)
+			->build();
+
+		self::assertSame(
+			[],
+			PngMetadataReader::create(maxInflatedBytes: 4)->read($png)->texts,
+		);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte text budget');
+		PngMetadataReader::create(strict: true, maxInflatedBytes: 4)->read($png);
+	}
+
+	#[Test]
+	public function the_inflation_budget_is_shared_across_text_chunks(): void
+	{
+		$png = PngBuilder::create()
+			->addZtxt('First', '12345')
+			->addZtxt('Second', '1234')
+			->addItxt('Third', '12', compressed: true)
+			->build();
+
+		$doc = PngMetadataReader::create(maxInflatedBytes: 10)->read($png);
+
+		self::assertCount(2, $doc->texts);
+		self::assertSame('First', $doc->texts[0]->keyword);
+		self::assertSame('Second', $doc->texts[1]->keyword);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 10-byte text budget');
+		PngMetadataReader::create(strict: true, maxInflatedBytes: 10)->read($png);
+	}
+
+	#[Test]
+	public function a_one_byte_inflation_budget_is_valid(): void
+	{
+		$png = PngBuilder::create()->addZtxt('Title', 'a')->build();
+
+		$doc = PngMetadataReader::create(maxInflatedBytes: 1)->read($png);
+
+		self::assertSame('a', $doc->texts[0]->text);
+	}
+
+	#[Test]
+	public function the_inflation_budget_resets_for_each_read(): void
+	{
+		$reader = PngMetadataReader::create(maxInflatedBytes: 5);
+		$png = PngBuilder::create()->addZtxt('Title', 'hello')->build();
+
+		self::assertSame('hello', $reader->read($png)->texts[0]->text);
+		self::assertSame('hello', $reader->read($png)->texts[0]->text);
+	}
+
+	#[Test]
+	public function a_non_positive_inflation_budget_is_rejected(): void
+	{
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('must be greater than zero');
+
+		PngMetadataReader::create(maxInflatedBytes: 0);
 	}
 
 	#[Test]

@@ -71,15 +71,7 @@ final class ItxtDecoder implements ChunkDecoderInterface
 
 		$compressed = $compressionFlag === 1;
 		if ($compressed) {
-			$inflated = @\gzuncompress($text);
-			if ($inflated === false) {
-				throw ChunkDecodingException::forChunk(
-					$chunk->getCode(),
-					$chunk->dataOffset,
-					'iTXt text is flagged as compressed but zlib inflation failed.',
-				);
-			}
-			$text = $inflated;
+			$text = $context->inflater->inflate($text, $chunk->getCode(), $chunk->dataOffset);
 		}
 
 		if ($keyword === self::XMP_KEYWORD) {

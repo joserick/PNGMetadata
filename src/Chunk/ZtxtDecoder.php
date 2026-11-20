@@ -65,15 +65,13 @@ final class ZtxtDecoder implements ChunkDecoderInterface
 		}
 
 		// Compression applies to the Latin-1 bytes, so inflate before charset
-		// conversion; the text is the rest of the chunk.
-		$inflated = @\gzuncompress(\substr($data, $methodOffset + 1));
-		if ($inflated === false) {
-			throw ChunkDecodingException::forChunk(
-				$chunk->getCode(),
-				$chunk->dataOffset,
-				'zTXt text is compressed with zlib but inflation failed.',
-			);
-		}
+		// conversion; the text is the rest of the chunk. The shared inflater
+		// enforces the per-read budget (bomb protection).
+		$inflated = $context->inflater->inflate(
+			\substr($data, $methodOffset + 1),
+			$chunk->getCode(),
+			$chunk->dataOffset,
+		);
 
 		$builder->addText(new TextEntry(
 			keyword: TextDecoder::latin1ToUtf8($keyword),

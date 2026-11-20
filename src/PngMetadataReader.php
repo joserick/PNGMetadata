@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace PNGMetadata;
 
+use InvalidArgumentException;
+use PNGMetadata\Chunk\BoundedInflater;
 use PNGMetadata\Chunk\ChunkDecoderRegistry;
 use PNGMetadata\Chunk\DecodingContext;
 use PNGMetadata\Chunk\MetadataBuilder;
@@ -16,22 +18,32 @@ use PNGMetadata\Parsing\PngReader;
  */
 final class PngMetadataReader
 {
+	private readonly int $maxInflatedBytes;
+
 	/**
 	 * @param ChunkDecoderRegistry $registry Decoder set; defaults to the built-in registry.
 	 * @param bool $strict Enable CRC, ordering and decode-conformance validation.
+	 * @param int $maxInflatedBytes Cumulative zTXt/iTXt inflation budget per read().
 	 */
 	public function __construct(
 		private readonly ChunkDecoderRegistry $registry = new ChunkDecoderRegistry(),
 		private readonly bool $strict = false,
+		int $maxInflatedBytes = BoundedInflater::DEFAULT_MAX_BYTES,
 	) {
+		if ($maxInflatedBytes < 1) {
+			throw new InvalidArgumentException('The inflated text budget must be greater than zero.');
+		}
+		$this->maxInflatedBytes = $maxInflatedBytes;
 	}
 
 	/**
 	 * Create a reader, optionally in strict (conformance-checking) mode.
 	 */
-	public static function create(bool $strict = false): self
-	{
-		return new self(strict: $strict);
+	public static function create(
+		bool $strict = false,
+		int $maxInflatedBytes = BoundedInflater::DEFAULT_MAX_BYTES,
+	): self {
+		return new self(strict: $strict, maxInflatedBytes: $maxInflatedBytes);
 	}
 
 	/**
@@ -48,7 +60,10 @@ final class PngMetadataReader
 	public function read(mixed $input): MetadataDocument
 	{
 		$reader = PngReader::create($this->strict);
-		$context = new DecodingContext(strict: $this->strict);
+		$context = new DecodingContext(
+			strict: $this->strict,
+			inflater: new BoundedInflater($this->maxInflatedBytes),
+		);
 		$builder = new MetadataBuilder($this->strict);
 		$isFirstChunk = true;
 
