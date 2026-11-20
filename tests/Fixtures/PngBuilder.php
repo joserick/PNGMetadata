@@ -47,6 +47,11 @@ final class PngBuilder
 		return $this->addChunk('tEXt', $keyword . "\0" . $text);
 	}
 
+	public function addZtxt(string $keyword, string $text, int $method = 0): self
+	{
+		return $this->addChunk('zTXt', $keyword . "\0" . \chr($method) . \gzcompress($text));
+	}
+
 	public function addItxt(
 		string $keyword,
 		string $text,

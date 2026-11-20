@@ -14,6 +14,7 @@ use PNGMetadata\Chunk\MetadataBuilder;
 use PNGMetadata\Chunk\SrgbDecoder;
 use PNGMetadata\Chunk\TextDecoder;
 use PNGMetadata\Chunk\XmpDecoder;
+use PNGMetadata\Chunk\ZtxtDecoder;
 use PNGMetadata\Metadata\BackgroundColor;
 use PNGMetadata\Metadata\ColorType;
 use PNGMetadata\Metadata\HeaderData;
@@ -51,6 +52,7 @@ use Random\Randomizer;
 #[CoversClass(MetadataBuilder::class)]
 #[CoversClass(IhdrDecoder::class)]
 #[CoversClass(TextDecoder::class)]
+#[CoversClass(ZtxtDecoder::class)]
 #[CoversClass(ItxtDecoder::class)]
 #[CoversClass(ExifDecoder::class)]
 #[CoversClass(SrgbDecoder::class)]
@@ -95,6 +97,11 @@ final class RandomizedCorpusTest extends TestCase
 		$ops[] = function (PngBuilder $builder) use (&$expectedTexts): void {
 			$expectedTexts[] = ['Note', 'Texto con acentos — unicode'];
 			$builder->addItxt('Note', 'Texto con acentos — unicode', 'es', 'Nota');
+		};
+
+		$ops[] = function (PngBuilder $builder) use (&$expectedTexts): void {
+			$expectedTexts[] = ['Compressed', 'Café zTXt'];
+			$builder->addZtxt('Compressed', "Caf\xe9 zTXt");
 		};
 
 		$expectedIntent = null;

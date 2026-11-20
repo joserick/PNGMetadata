@@ -188,7 +188,7 @@ identical do not need a spec delta.
 The chunk bible and architecture for these live in
 `openspec/changes/archive/2026-08-12-modernize-architecture/design.md` (D7, D8):
 
-- **Phase 2 — classic coverage:** zTXt, iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT +
+- **Phase 2 — classic coverage:** iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT +
   the color-precedence resolver (spec §4.3 Table 1: cICP > iCCP > sRGB > cHRM+gAMA).
 - **Phase 3 — PNG 3.0:** cICP / mDCV / cLLI (HDR signaling, H.273 enums), APNG summary
   (acTL/fcTL), `image/apng`.

@@ -17,7 +17,7 @@ $document->header?->colorType;          // ColorType enum
 $document->header?->interlaceMethod;    // InterlaceMethod enum
 
 $document->renderingIntent?->label();   // 'Perceptual', ...
-$document->texts;                       // TextEntry[] (tEXt + iTXt)
+$document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt)
 $document->xmp;                         // structured array
 $document->exif;                        // decoded EXIF sections
 $document->background;                  // ?BackgroundColor

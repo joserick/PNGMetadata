@@ -37,6 +37,7 @@ final class ChunkDecoderRegistry
 		return [
 			new IhdrDecoder(),
 			new TextDecoder(),
+			new ZtxtDecoder(),
 			new ItxtDecoder(),
 			new ExifDecoder(),
 			new SrgbDecoder(),

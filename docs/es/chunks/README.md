@@ -13,7 +13,7 @@ Esta sección es el corazón de la documentación: **cada tipo de chunk, qué si
 |---|---|---|---|
 | `IHDR` | Cabecera: dimensiones, tipo de color | ✅ | [IHDR](/es/chunks/ihdr.html) |
 | `tEXt` | Texto simple (Latin-1) | ✅ | [Texto](/es/chunks/text.html) |
-| `zTXt` | Texto comprimido | ⏳ Fase 2 | [Texto](/es/chunks/text.html) |
+| `zTXt` | Texto comprimido | ✅ | [Texto](/es/chunks/text.html) |
 | `iTXt` | Texto internacional (UTF-8) | ✅ | [Texto](/es/chunks/text.html) |
 | `eXIf` | Datos EXIF (cámara) | ✅ | [EXIF](/es/chunks/exif.html) |
 | XMP (en `iTXt`) | Metadatos estructurados | ✅ | [XMP](/es/chunks/xmp.html) |

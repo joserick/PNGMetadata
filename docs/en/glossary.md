@@ -69,7 +69,7 @@ Quick reference of terms used in this documentation and in the code.
 
 ## Roadmap
 
-- **Phase 1** — core + chunk decoders (completed). Chunks: IHDR, tEXt, iTXt/XMP, eXIf, sRGB, bKGD.
-- **Phase 2** — classic coverage: zTXt, iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT, PLTE + color-precedence resolver.
+- **Phase 1** — core + chunk decoders (completed). Chunks: IHDR, tEXt, zTXt, iTXt/XMP, eXIf, sRGB, bKGD.
+- **Phase 2** — classic coverage: iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT, PLTE + color-precedence resolver.
 - **Phase 3** — PNG 3.0: cICP, mDCV, cLLI, APNG, `image/apng`.
 - **Phase 4** — Laravel package (separate repository) consuming this core.

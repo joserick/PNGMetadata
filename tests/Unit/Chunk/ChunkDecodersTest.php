@@ -24,6 +24,7 @@ use PNGMetadata\Chunk\MetadataBuilder;
 use PNGMetadata\Chunk\SrgbDecoder;
 use PNGMetadata\Chunk\TextDecoder;
 use PNGMetadata\Chunk\XmpDecoder;
+use PNGMetadata\Chunk\ZtxtDecoder;
 use PNGMetadata\Exception\InvalidPngException;
 use PNGMetadata\Parsing\BinaryStream;
 use PNGMetadata\Parsing\ChunkType;
@@ -46,6 +47,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(MetadataBuilder::class)]
 #[CoversClass(IhdrDecoder::class)]
 #[CoversClass(TextDecoder::class)]
+#[CoversClass(ZtxtDecoder::class)]
 #[CoversClass(ItxtDecoder::class)]
 #[CoversClass(ExifDecoder::class)]
 #[CoversClass(SrgbDecoder::class)]
@@ -308,6 +310,122 @@ final class ChunkDecodersTest extends TestCase
 		);
 
 		self::assertSame('Café PNG', $doc->texts[0]->text);
+	}
+
+	#[Test]
+	public function it_decodes_ztxt_with_chunk_metadata(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addZtxt('Title', 'Sunset')->build(),
+		);
+
+		$entry = $doc->texts[0];
+		self::assertSame('Title', $entry->keyword);
+		self::assertSame('Sunset', $entry->text);
+		self::assertTrue($entry->compressed);
+		self::assertSame('zTXt', $entry->chunkType);
+
+		$array = $doc->toArray();
+		self::assertSame('zTXt', $array['texts'][0]['chunk'] ?? null);
+		self::assertTrue($array['texts'][0]['compressed'] ?? null);
+	}
+
+	#[Test]
+	public function it_converts_ztxt_keyword_and_text_from_latin1_to_utf8(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addZtxt("R\xe9sum\xe9", "Caf\xe9 PNG")->build(),
+		);
+
+		self::assertSame('Résumé', $doc->texts[0]->keyword);
+		self::assertSame('Café PNG', $doc->texts[0]->text);
+	}
+
+	#[Test]
+	public function ztxt_keyword_of_79_bytes_is_accepted(): void
+	{
+		$keyword = \str_repeat('K', 79);
+
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addZtxt($keyword, 'value')->build(),
+		);
+
+		self::assertCount(1, $doc->texts);
+		self::assertSame($keyword, $doc->texts[0]->keyword);
+	}
+
+	#[Test]
+	public function repeated_ztxt_entries_are_preserved_in_file_order(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addZtxt('Comment', 'first')
+				->addText('Title', 'middle')
+				->addZtxt('Comment', 'second')
+				->build(),
+		);
+
+		self::assertSame(
+			[['Comment', 'first'], ['Title', 'middle'], ['Comment', 'second']],
+			\array_map(
+				static fn (TextEntry $entry): array => [$entry->keyword, $entry->text],
+				$doc->texts,
+			),
+		);
+		self::assertSame(
+			['zTXt', 'tEXt', 'zTXt'],
+			\array_map(static fn (TextEntry $entry): string => $entry->chunkType, $doc->texts),
+		);
+	}
+
+	/**
+	 * Every unusable zTXt shape must be omitted in lenient mode and raised in
+	 * strict mode (ADR-007).
+	 *
+	 * @return iterable<string, array{string, string}>
+	 */
+	public static function malformedZtxtCases(): iterable
+	{
+		yield 'missing null terminator' => [
+			'NoTerminator',
+			'zTXt payload has no null terminator',
+		];
+		yield 'empty keyword' => [
+			"\0\x00" . \gzcompress('value'),
+			'zTXt keyword must be 1-79 bytes, 0 given',
+		];
+		yield 'oversized keyword' => [
+			\str_repeat('K', 80) . "\0\x00" . \gzcompress('value'),
+			'zTXt keyword must be 1-79 bytes, 80 given',
+		];
+		yield 'missing method byte' => [
+			"Title\0",
+			'zTXt chunk is missing the compression method byte',
+		];
+		yield 'unsupported method' => [
+			"Title\0\x01" . \gzcompress('value'),
+			'zTXt compression method must be 0 (zlib), 1 given',
+		];
+		yield 'corrupt zlib' => [
+			"Title\0\x00not-zlib-data",
+			'zTXt text is compressed with zlib but inflation failed',
+		];
+	}
+
+	#[Test]
+	#[DataProvider('malformedZtxtCases')]
+	public function malformed_ztxt_follows_the_policy(string $payload, string $message): void
+	{
+		$png = PngBuilder::create()->addChunk('zTXt', $payload)->build();
+
+		self::assertSame([], PngMetadataReader::create()->read($png)->texts);
+
+		try {
+			PngMetadataReader::create(strict: true)->read($png);
+			self::fail('Malformed zTXt must raise in strict mode.');
+		} catch (ChunkDecodingException $e) {
+			self::assertStringContainsString($message, $e->getMessage());
+		}
 	}
 
 	#[Test]
@@ -655,7 +773,7 @@ final class ChunkDecodersTest extends TestCase
 	public function the_default_registry_covers_every_supported_chunk(): void
 	{
 		self::assertSame(
-			['IHDR', 'tEXt', 'iTXt', 'eXIf', 'sRGB', 'bKGD'],
+			['IHDR', 'tEXt', 'zTXt', 'iTXt', 'eXIf', 'sRGB', 'bKGD'],
 			\array_map(
 				static fn (ChunkDecoderInterface $decoder): string => $decoder->supports(),
 				ChunkDecoderRegistry::defaults(),

@@ -66,11 +66,13 @@ Bytes:  41 75 74 68 6F 72 00 4A 6F 73 E9
 keyword (Latin-1) | \0 | compression method (1 byte, always 0) | compressed text (zlib)
 ```
 
-Identical to `tEXt` in content, but the text is compressed with **zlib/deflate** to save space. Extraction requires inflating the text: `gzuncompress()`.
+Identical to `tEXt` in content, but the text is compressed with **zlib/deflate** to save space. Extraction inflates the text with `gzuncompress()`.
 
 ::: info Status
-`zTXt` is planned for Phase 2. Although common (ImageMagick and GIMP use it), v2 does not decode it yet.
+`zTXt` is supported since `2.0.0-beta.2`. It is common in files written by ImageMagick and GIMP.
 :::
+
+`ZtxtDecoder` finds the first `\0`, validates the 1-79 byte keyword, requires compression method `0`, inflates the remaining bytes, and then converts keyword and text from Latin-1 to UTF-8. The resulting `TextEntry` keeps `chunkType = 'zTXt'` and `compressed = true`; multiple chunks are preserved in file order.
 
 ## iTXt — international text (and the home of XMP)
 
