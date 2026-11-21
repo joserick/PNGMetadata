@@ -61,8 +61,13 @@ profile name (Latin-1) \0 | compression method (1 byte) | ICC profile (zlib comp
 An **ICC profile** (International Color Consortium) is a binary file that mathematically describes a color space. It is the most complete and flexible mechanism, but also the heaviest.
 
 ::: info Status
-`iCCP` is planned for Phase 2. Extracting it involves inflating the compressed profile and parsing its header (128 bytes) to read, for example, the profile description.
+`iCCP` is supported since `2.0.0-beta.4`. `IccpDecoder` validates the profile name and method, inflates the profile under the reader's shared budget, then parses the 128-byte ICC header, the tag table and the `desc`/`mluc` description tag. The document exposes the profile name, description, version, class, color space, PCS and rendering intent.
 :::
+
+```php
+$document->iccProfile; // ?IccProfile
+$document->iccProfile?->description;
+```
 
 ## gAMA — gamma
 
@@ -86,12 +91,23 @@ Bytes:  8 four-byte integers, each × 100000
 Defines the chromatic coordinates (in CIE xyY space) of the white point and the red, green and blue primaries. Together with `gAMA`, it describes the color space exactly without needing an ICC profile.
 
 ::: info Status
-`gAMA` and `cHRM` are planned for Phase 2. Together they form "priority 4" in the precedence scheme.
+`gAMA` and `cHRM` are supported since `2.0.0-beta.4`. `GamaDecoder` rejects a zero or non-4-byte payload; `ChrmDecoder` requires exactly 32 bytes and exposes the white point plus the red, green and blue primaries.
 :::
+
+```php
+$document->gamma?->value();       // e.g. 0.45455
+$document->chromaticities;        // ?Chromaticities
+```
 
 ## What PNGMetadata v2 supports today
 
-From this family, v2 currently supports **only `sRGB`**. The rest (iCCP, gAMA, cHRM) is planned, along with the **precedence resolver** that will apply the full Table 1 (including Phase 3's `cICP`).
+v2 supports **`sRGB`, `iCCP`, `gAMA` and `cHRM`**. The document exposes each decoded chunk separately and adds `colorSource` with the resolved winner for the supported chunks:
+
+```
+iCCP > sRGB > cHRM+gAMA
+```
+
+`gAMA` alone is visible as a gamma value but does not produce a `colorSource`, because it does not define a complete color space. `cICP` joins the top of this precedence table in Phase 3.
 
 ## Next
 

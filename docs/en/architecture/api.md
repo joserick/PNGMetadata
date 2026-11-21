@@ -17,6 +17,10 @@ $document->header?->colorType;          // ColorType enum
 $document->header?->interlaceMethod;    // InterlaceMethod enum
 
 $document->renderingIntent?->label();   // 'Perceptual', ...
+$document->iccProfile;                  // ?IccProfile
+$document->gamma?->value();             // ?float
+$document->chromaticities;              // ?Chromaticities
+$document->colorSource;                 // ?ColorSource
 $document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt)
 $document->xmp;                         // structured array
 $document->exif;                        // decoded EXIF sections
@@ -45,15 +49,32 @@ $document = PngMetadataReader::create(strict: true)->read('photo.png');
 
 Validates each chunk's CRC-32 and ordering rules (IHDR first, IEND last), plus decode conformance: malformed chunks, duplicated singletons, and eXIf placed after the first IDAT raise a typed exception naming the chunk and its offset. Useful for conformance, but slower.
 
-## Compressed text budget
+## Compressed data budget
 
-`zTXt` and compressed `iTXt` text is inflated under a cumulative budget for each `read()` call, 16 MiB by default. The limit protects the process from zlib bombs while leaving normal metadata untouched. A chunk that would exceed the remaining budget is omitted in lenient mode and raises a `ChunkDecodingException` in strict mode.
+`zTXt`, compressed `iTXt` and `iCCP` payloads are inflated under a cumulative budget for each `read()` call, 16 MiB by default. The limit protects the process from zlib bombs while leaving normal metadata untouched. A chunk that would exceed the remaining budget is omitted in lenient mode and raises a `ChunkDecodingException` in strict mode.
 
 ```php
 $reader = PngMetadataReader::create(maxInflatedBytes: 32 * 1024 * 1024);
 ```
 
 The budget must be greater than zero; invalid values are rejected with `InvalidArgumentException`.
+
+## Color metadata
+
+`iCCP`, `gAMA` and `cHRM` join `sRGB` in the typed model. `colorSource` is the resolved source after applying PNG §4.3 Table 1 for the supported chunks:
+
+```
+iCCP > sRGB > cHRM+gAMA
+```
+
+All decoded chunks remain accessible even when a higher-priority source wins. `gAMA` alone is a gamma hint, so it does not produce a `colorSource` on its own.
+
+```php
+$document->iccProfile;       // ?IccProfile
+$document->gamma;            // ?Gamma
+$document->chromaticities;   // ?Chromaticities
+$document->colorSource;      // ?ColorSource
+```
 
 ## Exceptions
 

@@ -64,8 +64,8 @@ input (path|string|stream)
 - **Lazy payloads:** `RawChunk::data()` seeks on demand and restores the cursor, so
   iterating a large image costs memory proportional to chunk *headers* only. Never load
   IDAT/fdAT eagerly. `data()` must stay position-neutral.
-- **Bounded text inflation:** `zTXt` and compressed `iTXt` share a cumulative inflation
-  budget per `read()` (default 16 MiB, configurable via
+- **Bounded text inflation:** `zTXt`, compressed `iTXt` and `iCCP` share a cumulative
+  inflation budget per `read()` (default 16 MiB, configurable via
   `PngMetadataReader::create(maxInflatedBytes: ...)`). Never call `gzuncompress()` directly
   in a decoder; go through `DecodingContext::$inflater` so zlib bombs cannot bypass the
   budget.
@@ -100,10 +100,16 @@ chunks, duplicated singletons, eXIf placement).
 height, bitDepth, `ColorType`, compression/filter, `InterlaceMethod`), `texts`
 (`TextEntry[]` in file order, repeated keywords preserved), `xmp` (structured
 array), `exif` (decoded sections), `background` (`BackgroundColor`),
-`renderingIntent` (`RenderingIntent`), `thumbnailBytes(): ?string` (no GD), and
+`renderingIntent` (`RenderingIntent`), `iccProfile` (`IccProfile`), `gamma`
+(`Gamma`), `chromaticities` (`Chromaticities`), `colorSource` (`ColorSource`,
+the PNG §4.3 precedence result), `thumbnailBytes(): ?string` (no GD), and
 `toArray()`. Errors are typed exceptions under `PngMetadataException`
 (`InvalidPngException`, `TruncatedDataException`, `ChunkDecodingException`,
 `CrcMismatchException`).
+
+`PngMetadataReader::create(bool $strict = false, int $maxInflatedBytes = 16 MiB)`
+also bounds the per-read inflation budget shared by `zTXt`, compressed `iTXt`
+and `iCCP`; non-positive values are rejected.
 
 ### v1 compatibility — intentionally removed
 
@@ -193,8 +199,9 @@ identical do not need a spec delta.
 The chunk bible and architecture for these live in
 `openspec/changes/archive/2026-08-12-modernize-architecture/design.md` (D7, D8):
 
-- **Phase 2 — classic coverage:** iCCP, gAMA, cHRM, tRNS, tIME, pHYs, sBIT +
-  the color-precedence resolver (spec §4.3 Table 1: cICP > iCCP > sRGB > cHRM+gAMA).
+- **Phase 2 — classic coverage:** tRNS, tIME, pHYs, sBIT and the `PLTE`
+  decision. The color-precedence resolver for the supported chunks
+  (iCCP > sRGB > cHRM+gAMA) is implemented; Phase 3 extends it with `cICP`.
 - **Phase 3 — PNG 3.0:** cICP / mDCV / cLLI (HDR signaling, H.273 enums), APNG summary
   (acTL/fcTL), `image/apng`.
 - **Phase 4 — Laravel package** (separate repo) consuming this core.

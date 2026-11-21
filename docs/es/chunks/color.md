@@ -61,8 +61,13 @@ profile name (Latin-1) \0 | compression method (1 byte) | ICC profile (zlib comp
 Un **perfil ICC** (International Color Consortium) es un archivo binario que describe matemáticamente un espacio de color. Es el mecanismo más completo y flexible, pero también el más pesado.
 
 ::: info Estado
-`iCCP` está planificado para la Fase 2. Extraerlo implica inflar el perfil comprimido y parsear su cabecera (128 bytes) para leer, por ejemplo, la descripción del perfil.
+`iCCP` es compatible desde `2.0.0-beta.4`. `IccpDecoder` valida el nombre y el método, infla el perfil bajo el presupuesto compartido del lector y después parsea la cabecera ICC de 128 bytes, la tabla de tags y el tag de descripción `desc`/`mluc`. El documento expone nombre, descripción, versión, clase, espacio de color, PCS e intent de renderizado.
 :::
+
+```php
+$documento->iccProfile; // ?IccProfile
+$documento->iccProfile?->description;
+```
 
 ## gAMA — gamma
 
@@ -86,12 +91,23 @@ Bytes:  8 enteros de 4 bytes, cada uno × 100000
 Define las coordenadas cromáticas (en espacio CIE xyY) del punto blanco y de los primarios rojo, verde y azul. Junto con `gAMA`, describe exactamente el espacio de color sin necesidad de un perfil ICC.
 
 ::: info Estado
-`gAMA` y `cHRM` están planificados para la Fase 2. Juntos forman la "prioridad 4" del esquema de precedencia.
+`gAMA` y `cHRM` son compatibles desde `2.0.0-beta.4`. `GamaDecoder` rechaza un payload de longitud distinta de 4 bytes o un valor cero; `ChrmDecoder` exige exactamente 32 bytes y expone el punto blanco y los primarios rojo, verde y azul.
 :::
+
+```php
+$documento->gamma?->value();       // p. ej. 0.45455
+$documento->chromaticities;        // ?Chromaticities
+```
 
 ## Qué soporta hoy PNGMetadata v2
 
-De esta familia, v2 soporta hoy **solo `sRGB`**. El resto (iCCP, gAMA, cHRM) está planificado, junto con el **resolvedor de precedencia** que aplicará la Tabla 1 completa (incluyendo `cICP` de la Fase 3).
+v2 soporta **`sRGB`, `iCCP`, `gAMA` y `cHRM`**. El documento expone cada chunk decodificado por separado y añade `colorSource` con el ganador resuelto para los chunks soportados:
+
+```
+iCCP > sRGB > cHRM+gAMA
+```
+
+`gAMA` por sí solo se ve como valor de gamma pero no produce `colorSource`, porque no define un espacio de color completo. `cICP` se sumará a la parte superior de esta tabla en la Fase 3.
 
 ## Siguiente
 

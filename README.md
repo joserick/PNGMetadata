@@ -15,8 +15,8 @@ Version 2 is a ground-up rewrite on a layered architecture with a **typed, immut
 > **Status: `2.0.0-beta.3` pre-release.** v2 is available for testing but is
 > not yet the default stable line. Install the beta explicitly (see
 > [Installation](#installation)); the supported chunk set is `IHDR`, `tEXt`,
-> `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`. Phase 2 chunks (`iCCP`,
-> `gAMA`, `cHRM`, `tRNS`, `tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
+> `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB`, `iCCP`, `gAMA`, `cHRM` and `bKGD`.
+> Phase 2 chunks (`tRNS`, `tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
 > (APNG/HDR signaling) are follow-ups. API changes are still possible before
 > `2.0.0` stable; feedback goes through the `v2-beta` issue template/label.
 
@@ -24,7 +24,8 @@ Version 2 is a ground-up rewrite on a layered architecture with a **typed, immut
 - **Layered core**: binary parsing → chunk decoders → typed domain model, with dependencies pointing inward.
 - **Flexible input**: file path, binary string, or stream resource.
 - **Strict mode** with per-chunk CRC-32 and ordering validation.
-- **Zlib-bomb protection**: compressed `zTXt`/`iTXt` text shares a 16 MiB per-read inflation budget, configurable with `maxInflatedBytes`.
+- **Zlib-bomb protection**: compressed `zTXt`/`iTXt`/`iCCP` payloads share a 16 MiB per-read inflation budget, configurable with `maxInflatedBytes`.
+- **Color metadata**: `sRGB`, `iCCP`, `gAMA` and `cHRM`, with the PNG §4.3 precedence result exposed as `colorSource`.
 - **Memory-safe on big images**: `IDAT`/`fdAT` payloads are skipped lazily; extraction cost is proportional to the metadata, not the pixels.
 - **Bug fixes**: EXIF decode failures no longer fatal, positional iTXt parsing (compressed text, language tags), Latin-1 → UTF-8 for tEXt, EXIF magic-byte validation, truncated-file safety.
 - **Zero optional extensions**: GD is gone entirely — the embedded thumbnail is returned as bytes.
@@ -89,6 +90,10 @@ $document->header?->width;              // int
 $document->header?->colorType;          // ColorType enum
 $document->header?->interlaceMethod;    // InterlaceMethod enum
 $document->renderingIntent?->label();   // 'Perceptual', ...
+$document->iccProfile;                  // ?IccProfile (iCCP)
+$document->gamma?->value();             // ?float (gAMA)
+$document->chromaticities;              // ?Chromaticities (cHRM)
+$document->colorSource;                 // ?ColorSource (precedence result)
 $document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt, file order)
 $document->xmp;                         // ?array structured XMP
 $document->exif;                        // ?array decoded EXIF sections
@@ -209,11 +214,11 @@ when you need spec-compliance checking:
 $document = PngMetadataReader::create(strict: true)->read('Photo.png');
 ```
 
-### Compressed text budget
+### Compressed data budget
 
-`zTXt` and compressed `iTXt` payloads are inflated with a **per-read budget**
-of 16 MiB by default. The budget is cumulative across every compressed text
-chunk in one `read()`, so a file cannot multiply memory use with many small
+`zTXt`, compressed `iTXt` and `iCCP` payloads are inflated with a **per-read
+budget** of 16 MiB by default. The budget is cumulative across every compressed
+payload in one `read()`, so a file cannot multiply memory use with many small
 compressed chunks. A chunk that cannot be inflated within the remaining budget
 follows the normal lenient/strict policy.
 

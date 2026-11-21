@@ -18,9 +18,9 @@ This section is the heart of the documentation: **each chunk type, what it means
 | `eXIf` | EXIF data (camera) | ✅ | [EXIF](/en/chunks/exif.html) |
 | XMP (in `iTXt`) | Structured metadata | ✅ | [XMP](/en/chunks/xmp.html) |
 | `sRGB` | Rendering intent | ✅ | [Color](/en/chunks/color.html) |
-| `iCCP` | ICC color profile | ⏳ Phase 2 | [Color](/en/chunks/color.html) |
-| `gAMA` | Gamma value | ⏳ Phase 2 | [Color](/en/chunks/color.html) |
-| `cHRM` | Primary chromaticities | ⏳ Phase 2 | [Color](/en/chunks/color.html) |
+| `iCCP` | ICC color profile | ✅ | [Color](/en/chunks/color.html) |
+| `gAMA` | Gamma value | ✅ | [Color](/en/chunks/color.html) |
+| `cHRM` | Primary chromaticities | ✅ | [Color](/en/chunks/color.html) |
 | `cICP` | HDR color signaling | ⏳ Phase 3 | [PNG 3.0 / HDR](/en/chunks/png-3-hdr-apng.html) |
 | `mDCV` | Display color volume | ⏳ Phase 3 | [PNG 3.0 / HDR](/en/chunks/png-3-hdr-apng.html) |
 | `cLLI` | Content light levels | ⏳ Phase 3 | [PNG 3.0 / HDR](/en/chunks/png-3-hdr-apng.html) |

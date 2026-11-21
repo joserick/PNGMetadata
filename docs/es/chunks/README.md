@@ -18,9 +18,9 @@ Esta sección es el corazón de la documentación: **cada tipo de chunk, qué si
 | `eXIf` | Datos EXIF (cámara) | ✅ | [EXIF](/es/chunks/exif.html) |
 | XMP (en `iTXt`) | Metadatos estructurados | ✅ | [XMP](/es/chunks/xmp.html) |
 | `sRGB` | Intención de renderizado | ✅ | [Color](/es/chunks/color.html) |
-| `iCCP` | Perfil de color ICC | ⏳ Fase 2 | [Color](/es/chunks/color.html) |
-| `gAMA` | Valor gamma | ⏳ Fase 2 | [Color](/es/chunks/color.html) |
-| `cHRM` | Crominancias primarias | ⏳ Fase 2 | [Color](/es/chunks/color.html) |
+| `iCCP` | Perfil de color ICC | ✅ | [Color](/es/chunks/color.html) |
+| `gAMA` | Valor gamma | ✅ | [Color](/es/chunks/color.html) |
+| `cHRM` | Crominancias primarias | ✅ | [Color](/es/chunks/color.html) |
 | `cICP` | Señalización de color HDR | ⏳ Fase 3 | [PNG 3.0 / HDR](/es/chunks/png-3-hdr-apng.html) |
 | `mDCV` | Volumen de color del display | ⏳ Fase 3 | [PNG 3.0 / HDR](/es/chunks/png-3-hdr-apng.html) |
 | `cLLI` | Niveles de luz del contenido | ⏳ Fase 3 | [PNG 3.0 / HDR](/es/chunks/png-3-hdr-apng.html) |
