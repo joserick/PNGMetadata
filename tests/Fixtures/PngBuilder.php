@@ -84,6 +84,29 @@ final class PngBuilder
 		return $this->addChunk('sRGB', \chr($intent));
 	}
 
+	public function addGama(int $scaled): self
+	{
+		return $this->addChunk('gAMA', \pack('N', $scaled));
+	}
+
+	public function addChrm(
+		int $whiteX,
+		int $whiteY,
+		int $redX,
+		int $redY,
+		int $greenX,
+		int $greenY,
+		int $blueX,
+		int $blueY,
+	): self {
+		return $this->addChunk('cHRM', \pack('N8', $whiteX, $whiteY, $redX, $redY, $greenX, $greenY, $blueX, $blueY));
+	}
+
+	public function addIccp(string $name, string $profile, int $method = 0): self
+	{
+		return $this->addChunk('iCCP', $name . "\0" . \chr($method) . \gzcompress($profile));
+	}
+
 	public function addBkgd(string $payload): self
 	{
 		return $this->addChunk('bKGD', $payload);
@@ -125,6 +148,106 @@ final class PngBuilder
 	 *
 	 * @param bool $bigEndian Motorola ("MM\0*") byte order; Intel ("II*\0") by default.
 	 */
+	/**
+	 * Minimal ICC profile for iCCP tests: a 128-byte header, one optional
+	 * description tag (`desc` or `mluc`) and a correctly bounded tag table.
+	 */
+	public static function iccProfile(
+		string $description = 'sRGB IEC61966-2.1',
+		string $profileClass = 'mntr',
+		string $colorSpace = 'RGB ',
+		string $pcs = 'XYZ ',
+		int $version = 0x04300000,
+		int $renderingIntent = 0,
+		bool $useMluc = false,
+		bool $withDescription = true,
+		bool $compactDesc = false,
+		bool $withExtraTag = false,
+		bool $descriptionSecond = false,
+	): string {
+		$header = \pack('N', 0)                                  // size, patched below
+			. 'TEST'                                              // preferred CMM
+			. \pack('N', $version)
+			. \str_pad(\substr($profileClass, 0, 4), 4)
+			. \str_pad(\substr($colorSpace, 0, 4), 4)
+			. \str_pad(\substr($pcs, 0, 4), 4)
+			. \str_repeat("\0", 12)                              // creation date
+			. 'acsp'
+			. \str_repeat("\0", 4)                               // platform
+			. \pack('N', 0)                                      // flags
+			. \str_repeat("\0", 4)                               // manufacturer
+			. \str_repeat("\0", 4)                               // model
+			. \str_repeat("\0", 8)                               // attributes
+			. \pack('N', $renderingIntent)
+			. \str_repeat("\0", 12)                              // illuminant
+			. \str_repeat("\0", 4)                               // creator
+			. \str_repeat("\0", 16)                              // profile ID
+			. \str_repeat("\0", 28);                             // reserved
+
+		$tagSignature = $useMluc ? 'mluc' : 'desc';
+		$descriptionTag = $withDescription
+			? ($useMluc ? self::mlucTag($description) : self::descTag($description, $compactDesc))
+			: '';
+
+		/** @var array<int, array{string, string}> $tags */
+		$tags = [];
+		if ($withExtraTag && !$descriptionSecond) {
+			$tags[] = ['wtpt', self::xyzTag()];
+		}
+		if ($withDescription) {
+			$tags[] = [$tagSignature, $descriptionTag];
+		}
+		if ($withExtraTag && $descriptionSecond) {
+			$tags[] = ['wtpt', self::xyzTag()];
+		}
+
+		$tagOffset = 128 + 4 + (12 * \count($tags));
+		$tagTable = \pack('N', \count($tags));
+		$tagData = '';
+		foreach ($tags as [$signature, $tag]) {
+			$tagTable .= $signature . \pack('N', $tagOffset) . \pack('N', \strlen($tag));
+			$padded = \str_pad($tag, (int) \ceil(\strlen($tag) / 4) * 4, "\0");
+			$tagData .= $padded;
+			$tagOffset += \strlen($padded);
+		}
+
+		$profile = $header . $tagTable . $tagData;
+
+		return (string) \substr_replace($profile, \pack('N', \strlen($profile)), 0, 4);
+	}
+
+	private static function descTag(string $description, bool $compact = false): string
+	{
+		$ascii = $description . "\0";
+		$head = 'desc' . "\0\0\0\0" . \pack('N', \strlen($ascii)) . $ascii;
+
+		if ($compact) {
+			return $head;
+		}
+
+		return $head
+			. \pack('N', 0) . \pack('N', 0)     // Unicode language code + count
+			. \pack('n', 0) . "\0"              // ScriptCode + count
+			. \str_repeat("\0", 67);
+	}
+
+	private static function mlucTag(string $description): string
+	{
+		$utf16 = \mb_convert_encoding($description, 'UTF-16BE', 'UTF-8');
+		$stringOffset = 16 + 12; // mluc header + one 12-byte record
+
+		return 'mluc' . "\0\0\0\0"
+			. \pack('N', 1) . \pack('N', 12)
+			. \pack('n', 0x656E) . \pack('n', 0x5553) // en-US
+			. \pack('N', \strlen($utf16)) . \pack('N', $stringOffset)
+			. $utf16;
+	}
+
+	private static function xyzTag(): string
+	{
+		return 'XYZ ' . "\0\0\0\0" . \str_repeat("\0", 12);
+	}
+
 	public static function exifProfile(
 		string $make = 'SONY',
 		bool $bigEndian = false,

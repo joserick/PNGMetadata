@@ -6,7 +6,11 @@ namespace PNGMetadata\Chunk;
 
 use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Metadata\BackgroundColor;
+use PNGMetadata\Metadata\Chromaticities;
+use PNGMetadata\Metadata\ColorSource;
+use PNGMetadata\Metadata\Gamma;
 use PNGMetadata\Metadata\HeaderData;
+use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
@@ -32,6 +36,12 @@ final class MetadataBuilder
 	private ?string $exifRaw = null;
 
 	private ?RenderingIntent $renderingIntent = null;
+
+	private ?IccProfile $iccProfile = null;
+
+	private ?Gamma $gamma = null;
+
+	private ?Chromaticities $chromaticities = null;
 
 	private ?BackgroundColor $background = null;
 
@@ -97,6 +107,30 @@ final class MetadataBuilder
 		$this->renderingIntent = $intent;
 	}
 
+	public function setIccProfile(IccProfile $profile, string $chunkCode, int $offset): void
+	{
+		if (!$this->acceptsSingleton('iCCP', $chunkCode, $offset)) {
+			return;
+		}
+		$this->iccProfile = $profile;
+	}
+
+	public function setGamma(Gamma $gamma, string $chunkCode, int $offset): void
+	{
+		if (!$this->acceptsSingleton('gAMA', $chunkCode, $offset)) {
+			return;
+		}
+		$this->gamma = $gamma;
+	}
+
+	public function setChromaticities(Chromaticities $chromaticities, string $chunkCode, int $offset): void
+	{
+		if (!$this->acceptsSingleton('cHRM', $chunkCode, $offset)) {
+			return;
+		}
+		$this->chromaticities = $chromaticities;
+	}
+
 	public function setBackground(BackgroundColor $background, string $chunkCode, int $offset): void
 	{
 		if (!$this->acceptsSingleton('bKGD', $chunkCode, $offset)) {
@@ -117,8 +151,32 @@ final class MetadataBuilder
 			exif: $this->exif,
 			exifRaw: $this->exifRaw,
 			renderingIntent: $this->renderingIntent,
+			iccProfile: $this->iccProfile,
+			gamma: $this->gamma,
+			chromaticities: $this->chromaticities,
+			colorSource: $this->resolveColorSource(),
 			background: $this->background,
 		);
+	}
+
+	/**
+	 * Apply PNG §4.3 Table 1 to the chunks supported in this phase:
+	 * iCCP > sRGB > cHRM+gAMA. gAMA alone is a gamma hint, not a full color
+	 * source, so it does not produce a resolved source on its own.
+	 */
+	private function resolveColorSource(): ?ColorSource
+	{
+		if ($this->iccProfile !== null) {
+			return ColorSource::Iccp;
+		}
+		if ($this->renderingIntent !== null) {
+			return ColorSource::Srgb;
+		}
+		if ($this->chromaticities !== null) {
+			return ColorSource::Chromaticities;
+		}
+
+		return null;
 	}
 
 	/**

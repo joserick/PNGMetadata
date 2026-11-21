@@ -7,17 +7,24 @@ namespace PNGMetadata\Tests\Unit\Chunk;
 use PNGMetadata\Exception\ChunkDecodingException;
 use PNGMetadata\Exception\TruncatedDataException;
 use PNGMetadata\Metadata\BackgroundColor;
+use PNGMetadata\Metadata\Chromaticities;
+use PNGMetadata\Metadata\ColorSource;
 use PNGMetadata\Metadata\ColorType;
+use PNGMetadata\Metadata\Gamma;
 use PNGMetadata\Metadata\HeaderData;
+use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\InterlaceMethod;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
 use PNGMetadata\Chunk\BkgdDecoder;
+use PNGMetadata\Chunk\ChrmDecoder;
 use PNGMetadata\Chunk\ChunkDecoderInterface;
 use PNGMetadata\Chunk\ChunkDecoderRegistry;
 use PNGMetadata\Chunk\DecodingContext;
 use PNGMetadata\Chunk\ExifDecoder;
+use PNGMetadata\Chunk\GamaDecoder;
+use PNGMetadata\Chunk\IccpDecoder;
 use PNGMetadata\Chunk\IhdrDecoder;
 use PNGMetadata\Chunk\ItxtDecoder;
 use PNGMetadata\Chunk\MetadataBuilder;
@@ -51,6 +58,9 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(ItxtDecoder::class)]
 #[CoversClass(ExifDecoder::class)]
 #[CoversClass(SrgbDecoder::class)]
+#[CoversClass(IccpDecoder::class)]
+#[CoversClass(GamaDecoder::class)]
+#[CoversClass(ChrmDecoder::class)]
 #[CoversClass(BkgdDecoder::class)]
 #[CoversClass(XmpDecoder::class)]
 #[CoversClass(MetadataDocument::class)]
@@ -60,6 +70,10 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(RenderingIntent::class)]
 #[CoversClass(TextEntry::class)]
 #[CoversClass(BackgroundColor::class)]
+#[CoversClass(Gamma::class)]
+#[CoversClass(Chromaticities::class)]
+#[CoversClass(IccProfile::class)]
+#[CoversClass(ColorSource::class)]
 #[CoversClass(ChunkDecodingException::class)]
 #[CoversClass(TruncatedDataException::class)]
 #[CoversClass(InvalidPngException::class)]
@@ -449,7 +463,7 @@ final class ChunkDecodersTest extends TestCase
 		);
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte text budget');
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte inflation budget');
 		PngMetadataReader::create(strict: true, maxInflatedBytes: 4)->read($png);
 	}
 
@@ -466,7 +480,7 @@ final class ChunkDecodersTest extends TestCase
 		);
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte text budget');
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 4-byte inflation budget');
 		PngMetadataReader::create(strict: true, maxInflatedBytes: 4)->read($png);
 	}
 
@@ -486,7 +500,7 @@ final class ChunkDecodersTest extends TestCase
 		self::assertSame('Second', $doc->texts[1]->keyword);
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('zlib inflation failed or exceeded the 10-byte text budget');
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 10-byte inflation budget');
 		PngMetadataReader::create(strict: true, maxInflatedBytes: 10)->read($png);
 	}
 
@@ -804,6 +818,570 @@ final class ChunkDecodersTest extends TestCase
 		self::assertSame(RenderingIntent::Perceptual, $doc->renderingIntent);
 	}
 
+	#[Test]
+	public function it_decodes_gama(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addGama(45455)->build(),
+		);
+
+		self::assertSame(45455, $doc->gamma?->scaled);
+		self::assertEqualsWithDelta(0.45455, $doc->gamma?->value(), 0.000001);
+		self::assertEqualsWithDelta(0.45455, $doc->toArray()['gAMA'], 0.000001);
+	}
+
+	#[Test]
+	public function zero_gama_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->addGama(0)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->gamma);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('gAMA value must be greater than zero');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function wrong_gama_length_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->addChunk('gAMA', "\0\0\0")->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->gamma);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('gAMA payload must be exactly 4 bytes');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function it_decodes_chrm(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+				->build(),
+		);
+
+		$chrm = $doc->chromaticities;
+		self::assertNotNull($chrm);
+		self::assertEqualsWithDelta(0.3127, $chrm->whiteX, 0.000000001);
+		self::assertEqualsWithDelta(0.329, $chrm->whiteY, 0.000000001);
+		self::assertEqualsWithDelta(0.64, $chrm->redX, 0.000000001);
+		self::assertEqualsWithDelta(0.33, $chrm->redY, 0.000000001);
+		self::assertEqualsWithDelta(0.30, $chrm->greenX, 0.000000001);
+		self::assertEqualsWithDelta(0.60, $chrm->greenY, 0.000000001);
+		self::assertEqualsWithDelta(0.15, $chrm->blueX, 0.000000001);
+		self::assertEqualsWithDelta(0.06, $chrm->blueY, 0.000000001);
+		self::assertEqualsWithDelta(0.3127, $doc->toArray()['cHRM']['white']['x'], 0.000001);
+		self::assertEqualsWithDelta(0.329, $doc->toArray()['cHRM']['white']['y'], 0.000001);
+	}
+
+	#[Test]
+	public function wrong_chrm_length_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->addChunk('cHRM', \str_repeat("\0", 31))->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->chromaticities);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('cHRM payload must be exactly 32 bytes');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function it_decodes_iccp_header_and_desc_description(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC Profile', PngBuilder::iccProfile('sRGB IEC61966-2.1'))
+				->build(),
+		);
+
+		$profile = $doc->iccProfile;
+		self::assertNotNull($profile);
+		self::assertSame('ICC Profile', $profile->name);
+		self::assertSame('sRGB IEC61966-2.1', $profile->description);
+		self::assertSame('4.3.0', $profile->version);
+		self::assertSame('mntr', $profile->profileClass);
+		self::assertSame('RGB', $profile->colorSpace);
+		self::assertSame('XYZ', $profile->pcs);
+		self::assertSame(RenderingIntent::Perceptual, $profile->renderingIntent);
+		self::assertSame('sRGB IEC61966-2.1', $doc->toArray()['iCCP']['description'] ?? null);
+	}
+
+	#[Test]
+	public function it_decodes_iccp_mluc_description(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('Perfil', PngBuilder::iccProfile('Perfil en español', useMluc: true))
+				->build(),
+		);
+
+		self::assertSame('Perfil en español', $doc->iccProfile?->description);
+	}
+
+	#[Test]
+	public function an_iccp_profile_without_a_description_is_valid(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('No description', PngBuilder::iccProfile(withDescription: false))
+				->build(),
+		);
+
+		self::assertNotNull($doc->iccProfile);
+		self::assertNull($doc->iccProfile->description);
+		self::assertArrayNotHasKey('description', $doc->toArray()['iCCP']);
+	}
+
+	/**
+	 * @return iterable<string, array{string, string}>
+	 */
+	public static function malformedIccpCases(): iterable
+	{
+		$profile = PngBuilder::iccProfile();
+
+		yield 'missing separator' => [
+			'NoSeparator',
+			'iCCP payload has no null terminator',
+		];
+		yield 'empty name' => [
+			"\0\x00" . \gzcompress($profile),
+			'iCCP profile name must be 1-79 bytes, 0 given',
+		];
+		yield 'oversized name' => [
+			\str_repeat('K', 80) . "\0\x00" . \gzcompress($profile),
+			'iCCP profile name must be 1-79 bytes, 80 given',
+		];
+		yield 'missing method' => [
+			"ICC\0",
+			'iCCP chunk is missing the compression method byte',
+		];
+		yield 'unsupported method' => [
+			"ICC\0\x01" . \gzcompress($profile),
+			'iCCP compression method must be 0 (zlib), 1 given',
+		];
+		yield 'corrupt zlib' => [
+			"ICC\0\x00not-zlib-data",
+			'zlib inflation failed or exceeded',
+		];
+	}
+
+	#[Test]
+	#[DataProvider('malformedIccpCases')]
+	public function malformed_iccp_follows_the_policy(string $payload, string $message): void
+	{
+		$png = PngBuilder::create()->addChunk('iCCP', $payload)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage($message);
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function short_iccp_profile_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->addIccp('ICC', 'too-short')->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC profile is shorter than the 132-byte header');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_without_acsp_signature_follows_the_policy(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), 'xxxx', 36, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('missing the "acsp" signature');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_with_an_oversized_declared_size_follows_the_policy(): void
+	{
+		$profile = PngBuilder::iccProfile();
+		$profile = \substr_replace($profile, \pack('N', \strlen($profile) + 1), 0, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC profile declares');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_with_out_of_bounds_tags_follows_the_policy(): void
+	{
+		$profile = PngBuilder::iccProfile();
+		$profile = \substr_replace($profile, \pack('N', 9999), 136, 4); // tag offset
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC tag entry points outside the declared profile size');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_with_an_out_of_range_rendering_intent_follows_the_policy(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), \pack('N', 9), 64, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC profile rendering intent must be 0-3');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_over_the_inflation_budget_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()
+			->addIccp('ICC', PngBuilder::iccProfile())
+			->build();
+
+		self::assertNull(
+			PngMetadataReader::create(maxInflatedBytes: 64)->read($png)->iccProfile,
+		);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('inflation budget');
+		PngMetadataReader::create(strict: true, maxInflatedBytes: 64)->read($png);
+	}
+
+	#[Test]
+	public function iccp_profile_name_of_79_bytes_is_accepted(): void
+	{
+		$name = \str_repeat('K', 79);
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addIccp($name, PngBuilder::iccProfile())->build(),
+		);
+
+		self::assertSame($name, $doc->iccProfile?->name);
+	}
+
+	#[Test]
+	public function iccp_version_uses_major_minor_and_bugfix_nibbles(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC', PngBuilder::iccProfile(version: 0x05350000))
+				->build(),
+		);
+
+		self::assertSame('5.3.5', $doc->iccProfile?->version);
+	}
+
+	#[Test]
+	public function compact_desc_tag_at_the_ascii_boundary_is_valid(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC', PngBuilder::iccProfile('Hi', compactDesc: true))
+				->build(),
+		);
+
+		self::assertSame('Hi', $doc->iccProfile?->description);
+	}
+
+	#[Test]
+	public function empty_mluc_description_is_valid(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC', PngBuilder::iccProfile('', useMluc: true))
+				->build(),
+		);
+
+		self::assertNotNull($doc->iccProfile);
+		self::assertNull($doc->iccProfile->description);
+	}
+
+	#[Test]
+	public function mluc_description_is_trimmed(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC', PngBuilder::iccProfile("Hi\0", useMluc: true))
+				->build(),
+		);
+
+		self::assertSame('Hi', $doc->iccProfile?->description);
+	}
+
+	#[Test]
+	public function two_tag_profile_with_description_second(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addIccp('ICC', PngBuilder::iccProfile(withExtraTag: true, descriptionSecond: true))
+				->build(),
+		);
+
+		self::assertSame('sRGB IEC61966-2.1', $doc->iccProfile?->description);
+	}
+
+	#[Test]
+	public function iccp_profile_shorter_than_132_bytes_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()
+			->addIccp('ICC', \substr(PngBuilder::iccProfile(), 0, 131))
+			->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC profile is shorter than the 132-byte header');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_declared_size_below_132_follows_the_policy(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), \pack('N', 131), 0, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC profile declares 131 bytes');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_rendering_intent_is_read_from_offset_64(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), "\x09", 68, 1);
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addIccp('ICC', $profile)->build(),
+		);
+
+		self::assertSame(RenderingIntent::Perceptual, $doc->iccProfile?->renderingIntent);
+	}
+
+	#[Test]
+	public function iccp_tag_offset_inside_the_tag_table_follows_the_policy(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), \pack('N', 140), 136, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC tag entry points outside the declared profile size');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_tag_offset_one_byte_inside_the_tag_table_follows_the_policy(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), \pack('N', 143), 136, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC tag entry points outside the declared profile size');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_tag_length_of_eight_reaches_the_description_parser(): void
+	{
+		$profile = \substr_replace(PngBuilder::iccProfile(), \pack('N', 8), 140, 4);
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC desc tag is too short');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_desc_tag_with_zero_ascii_count_is_valid(): void
+	{
+		$profile = PngBuilder::iccProfile();
+		$profile = \substr_replace($profile, \pack('N', 12), 140, 4); // tag length
+		$profile = \substr_replace($profile, \pack('N', 0), 152, 4);  // ASCII count
+
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addIccp('ICC', $profile)->build(),
+		);
+
+		self::assertNotNull($doc->iccProfile);
+		self::assertNull($doc->iccProfile->description);
+	}
+
+	#[Test]
+	public function iccp_desc_ascii_count_beyond_the_tag_follows_the_policy(): void
+	{
+		$profile = PngBuilder::iccProfile();
+		$unpacked = \unpack('N', \substr($profile, 140, 4));
+		$tagLength = $unpacked === false ? 0 : $unpacked[1];
+		$profile = \substr_replace($profile, \pack('N', $tagLength - 9), 152, 4);
+
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC desc tag string exceeds the tag length');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_mluc_with_no_records_follows_the_policy(): void
+	{
+		$profile = PngBuilder::iccProfile('Desc', useMluc: true);
+		$profile = \substr_replace($profile, \pack('N', 0), 144 + 8, 4); // record count
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC mluc tag has no usable records');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function iccp_mluc_string_outside_the_tag_follows_the_policy(): void
+	{
+		$profile = PngBuilder::iccProfile('Desc', useMluc: true);
+		$profile = \substr_replace($profile, \pack('N', 1000), 144 + 16 + 4, 4); // string length
+		$png = PngBuilder::create()->addIccp('ICC', $profile)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->iccProfile);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('ICC mluc string exceeds the tag length');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function duplicate_color_chunks_follow_the_singleton_policy(): void
+	{
+		$gama = PngBuilder::create()->addGama(45455)->addGama(45455)->build();
+		self::assertNotNull(PngMetadataReader::create()->read($gama)->gamma);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one gAMA chunk is allowed');
+		PngMetadataReader::create(strict: true)->read($gama);
+	}
+
+	#[Test]
+	public function duplicate_iccp_chunks_follow_the_singleton_policy(): void
+	{
+		$profile = PngBuilder::iccProfile();
+		$png = PngBuilder::create()
+			->addIccp('ICC', $profile)
+			->addIccp('ICC again', $profile)
+			->build();
+
+		self::assertSame('ICC', PngMetadataReader::create()->read($png)->iccProfile?->name);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one iCCP chunk is allowed');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function duplicate_chrm_chunks_follow_the_singleton_policy(): void
+	{
+		$png = PngBuilder::create()
+			->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+			->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+			->build();
+
+		self::assertNotNull(PngMetadataReader::create()->read($png)->chromaticities);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one cHRM chunk is allowed');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function color_precedence_prefers_iccp(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addGama(45455)
+				->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+				->addSrgb(1)
+				->addIccp('ICC', PngBuilder::iccProfile())
+				->build(),
+		);
+
+		self::assertSame(ColorSource::Iccp, $doc->colorSource);
+		self::assertSame(RenderingIntent::RelativeColorimetric, $doc->renderingIntent);
+		self::assertNotNull($doc->iccProfile);
+		self::assertNotNull($doc->gamma);
+		self::assertNotNull($doc->chromaticities);
+	}
+
+	#[Test]
+	public function color_precedence_prefers_srgb_over_explicit_chromaticities(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addGama(45455)
+				->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+				->addSrgb(0)
+				->build(),
+		);
+
+		self::assertSame(ColorSource::Srgb, $doc->colorSource);
+	}
+
+	#[Test]
+	public function color_precedence_falls_back_to_chromaticities(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addGama(45455)
+				->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+				->build(),
+		);
+
+		self::assertSame(ColorSource::Chromaticities, $doc->colorSource);
+		self::assertSame('cHRM+gAMA', $doc->toArray()['colorSource']);
+	}
+
+	#[Test]
+	public function gamma_alone_is_not_a_color_source(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->addGama(45455)->build(),
+		);
+
+		self::assertNotNull($doc->gamma);
+		self::assertNull($doc->colorSource);
+		self::assertArrayNotHasKey('colorSource', $doc->toArray());
+	}
+
+	#[Test]
+	public function no_color_chunks_yields_no_color_source(): void
+	{
+		$doc = PngMetadataReader::create()->read(PngBuilder::create()->build());
+
+		self::assertNull($doc->colorSource);
+	}
+
 	/**
 	 * bKGD payload shape depends on every IHDR color type (spec section
 	 * 11.3.4.1); each row must decode its own variant, including the
@@ -914,7 +1492,7 @@ final class ChunkDecodersTest extends TestCase
 	public function the_default_registry_covers_every_supported_chunk(): void
 	{
 		self::assertSame(
-			['IHDR', 'tEXt', 'zTXt', 'iTXt', 'eXIf', 'sRGB', 'bKGD'],
+			['IHDR', 'tEXt', 'zTXt', 'iTXt', 'eXIf', 'sRGB', 'iCCP', 'gAMA', 'cHRM', 'bKGD'],
 			\array_map(
 				static fn (ChunkDecoderInterface $decoder): string => $decoder->supports(),
 				ChunkDecoderRegistry::defaults(),

@@ -61,7 +61,7 @@ final class BoundedInflaterTest extends TestCase
 
 		$this->expectException(ChunkDecodingException::class);
 		$this->expectExceptionMessage(
-			'Decode failure in chunk "zTXt" at offset 42: zlib inflation failed or exceeded the 4-byte text budget.',
+			'Decode failure in chunk "zTXt" at offset 42: zlib inflation failed or exceeded the 4-byte inflation budget.',
 		);
 
 		$inflater->inflate(\gzcompress('hello'), 'zTXt', 42);
@@ -73,7 +73,7 @@ final class BoundedInflaterTest extends TestCase
 		$inflater = new BoundedInflater(100);
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('zlib inflation failed or exceeded the 100-byte text budget');
+		$this->expectExceptionMessage('zlib inflation failed or exceeded the 100-byte inflation budget');
 
 		$inflater->inflate('not-zlib-data', 'iTXt', 7);
 	}
@@ -86,7 +86,7 @@ final class BoundedInflaterTest extends TestCase
 		self::assertSame('hello', $inflater->inflate(\gzcompress('hello'), 'zTXt', 0));
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('5-byte text budget');
+		$this->expectExceptionMessage('5-byte inflation budget');
 
 		$inflater->inflate(\gzcompress('x'), 'iTXt', 0);
 	}
@@ -101,7 +101,7 @@ final class BoundedInflaterTest extends TestCase
 		self::assertSame('1', $inflater->inflate(\gzcompress('1'), 'zTXt', 0));
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('10-byte text budget');
+		$this->expectExceptionMessage('10-byte inflation budget');
 
 		$inflater->inflate(\gzcompress('x'), 'iTXt', 0);
 	}
@@ -114,7 +114,7 @@ final class BoundedInflaterTest extends TestCase
 		self::assertSame('x', $inflater->inflate(\gzcompress('x'), 'zTXt', 0));
 
 		$this->expectException(ChunkDecodingException::class);
-		$this->expectExceptionMessage('1-byte text budget');
+		$this->expectExceptionMessage('1-byte inflation budget');
 
 		$inflater->inflate(\gzcompress('y'), 'zTXt', 12);
 	}

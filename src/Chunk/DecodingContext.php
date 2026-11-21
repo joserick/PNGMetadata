@@ -11,7 +11,7 @@ use PNGMetadata\Metadata\HeaderData;
  * Context passed to chunk decoders: chunks decoded earlier in the stream
  * that later decoders need (e.g., bKGD interpretation depends on IHDR),
  * plus stream-position facts (image data seen), the reader mode, and the
- * per-read compressed-text budget.
+ * per-read inflation budget.
  */
 final class DecodingContext
 {

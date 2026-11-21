@@ -77,6 +77,26 @@ final class MetadataDocumentTest extends TestCase
 	}
 
 	#[Test]
+	public function it_serializes_color_metadata_and_precedence(): void
+	{
+		$array = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->addGama(45455)
+				->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000)
+				->addSrgb(0)
+				->addIccp('ICC Profile', PngBuilder::iccProfile('sRGB IEC61966-2.1'))
+				->build(),
+		)->toArray();
+
+		self::assertSame('iCCP', $array['colorSource']);
+		self::assertSame('Perceptual', $array['sRGB']);
+		self::assertEqualsWithDelta(0.45455, $array['gAMA'], 0.000001);
+		self::assertEqualsWithDelta(0.3127, $array['cHRM']['white']['x'], 0.000001);
+		self::assertSame('ICC Profile', $array['iCCP']['name'] ?? null);
+		self::assertSame('sRGB IEC61966-2.1', $array['iCCP']['description'] ?? null);
+	}
+
+	#[Test]
 	public function it_rejects_non_png_input_at_reader_level(): void
 	{
 		$this->expectException(InvalidPngException::class);

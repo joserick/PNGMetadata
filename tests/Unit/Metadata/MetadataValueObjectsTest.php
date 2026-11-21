@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace PNGMetadata\Tests\Unit\Metadata;
 
 use PNGMetadata\Metadata\BackgroundColor;
+use PNGMetadata\Metadata\Chromaticities;
+use PNGMetadata\Metadata\ColorSource;
 use PNGMetadata\Metadata\ColorType;
+use PNGMetadata\Metadata\Gamma;
 use PNGMetadata\Metadata\HeaderData;
+use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\InterlaceMethod;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
@@ -20,6 +24,10 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(BackgroundColor::class)]
 #[CoversClass(HeaderData::class)]
 #[CoversClass(TextEntry::class)]
+#[CoversClass(Gamma::class)]
+#[CoversClass(Chromaticities::class)]
+#[CoversClass(IccProfile::class)]
+#[CoversClass(ColorSource::class)]
 final class MetadataValueObjectsTest extends TestCase
 {
 	#[Test]
@@ -74,6 +82,73 @@ final class MetadataValueObjectsTest extends TestCase
 		self::assertSame('7', BackgroundColor::paletteIndex(7)->toString());
 		self::assertSame('128', BackgroundColor::grayscale(128)->toString());
 		self::assertSame('65535 0 32768', BackgroundColor::rgb(65535, 0, 32768)->toString());
+	}
+
+	#[Test]
+	public function gamma_exposes_the_scaled_and_decimal_values(): void
+	{
+		$gamma = new Gamma(45455);
+
+		self::assertSame(45455, $gamma->scaled);
+		self::assertEqualsWithDelta(0.45455, $gamma->value(), 0.000001);
+	}
+
+	#[Test]
+	public function chromaticities_scale_and_serialize_the_white_point_and_primaries(): void
+	{
+		$chrm = Chromaticities::fromScaled(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000);
+
+		self::assertEqualsWithDelta(0.3127, $chrm->whiteX, 0.000001);
+		self::assertEqualsWithDelta(0.329, $chrm->whiteY, 0.000001);
+		self::assertSame([
+			'white' => ['x' => $chrm->whiteX, 'y' => $chrm->whiteY],
+			'red' => ['x' => $chrm->redX, 'y' => $chrm->redY],
+			'green' => ['x' => $chrm->greenX, 'y' => $chrm->greenY],
+			'blue' => ['x' => $chrm->blueX, 'y' => $chrm->blueY],
+		], $chrm->toArray());
+	}
+
+	#[Test]
+	public function icc_profile_serializes_header_fields_and_optional_description(): void
+	{
+		$profile = new IccProfile(
+			name: 'ICC Profile',
+			description: 'sRGB IEC61966-2.1',
+			version: '4.3.0',
+			profileClass: 'mntr',
+			colorSpace: 'RGB',
+			pcs: 'XYZ',
+			renderingIntent: RenderingIntent::Perceptual,
+		);
+
+		self::assertSame([
+			'name' => 'ICC Profile',
+			'version' => '4.3.0',
+			'class' => 'mntr',
+			'colorSpace' => 'RGB',
+			'pcs' => 'XYZ',
+			'renderingIntent' => 'Perceptual',
+			'description' => 'sRGB IEC61966-2.1',
+		], $profile->toArray());
+
+		$withoutDescription = new IccProfile(
+			name: 'ICC Profile',
+			description: null,
+			version: '4.3.0',
+			profileClass: 'mntr',
+			colorSpace: 'RGB',
+			pcs: 'XYZ',
+			renderingIntent: RenderingIntent::Perceptual,
+		);
+		self::assertArrayNotHasKey('description', $withoutDescription->toArray());
+	}
+
+	#[Test]
+	public function color_source_labels_match_the_chunk_names(): void
+	{
+		self::assertSame('iCCP', ColorSource::Iccp->label());
+		self::assertSame('sRGB', ColorSource::Srgb->label());
+		self::assertSame('cHRM+gAMA', ColorSource::Chromaticities->label());
 	}
 
 	#[Test]

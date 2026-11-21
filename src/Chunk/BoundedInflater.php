@@ -28,7 +28,7 @@ final class BoundedInflater
 		private readonly int $maxBytes = self::DEFAULT_MAX_BYTES,
 	) {
 		if ($maxBytes < 1) {
-			throw new InvalidArgumentException('The inflated text budget must be greater than zero.');
+			throw new InvalidArgumentException('The inflation budget must be greater than zero.');
 		}
 	}
 
@@ -62,7 +62,7 @@ final class BoundedInflater
 		return ChunkDecodingException::forChunk(
 			$chunkCode,
 			$offset,
-			\sprintf('zlib inflation failed or exceeded the %d-byte text budget.', $this->maxBytes),
+			\sprintf('zlib inflation failed or exceeded the %d-byte inflation budget.', $this->maxBytes),
 		);
 	}
 }

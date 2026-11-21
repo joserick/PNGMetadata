@@ -31,7 +31,7 @@ final class PngMetadataReader
 		int $maxInflatedBytes = BoundedInflater::DEFAULT_MAX_BYTES,
 	) {
 		if ($maxInflatedBytes < 1) {
-			throw new InvalidArgumentException('The inflated text budget must be greater than zero.');
+			throw new InvalidArgumentException('The inflation budget must be greater than zero.');
 		}
 		$this->maxInflatedBytes = $maxInflatedBytes;
 	}

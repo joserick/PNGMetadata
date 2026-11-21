@@ -41,6 +41,9 @@ final class ChunkDecoderRegistry
 			new ItxtDecoder(),
 			new ExifDecoder(),
 			new SrgbDecoder(),
+			new IccpDecoder(),
+			new GamaDecoder(),
+			new ChrmDecoder(),
 			new BkgdDecoder(),
 		];
 	}

@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace PNGMetadata\Tests\Unit;
 
 use PNGMetadata\Chunk\BkgdDecoder;
+use PNGMetadata\Chunk\ChrmDecoder;
 use PNGMetadata\Chunk\ChunkDecoderRegistry;
 use PNGMetadata\Chunk\DecodingContext;
 use PNGMetadata\Chunk\ExifDecoder;
+use PNGMetadata\Chunk\GamaDecoder;
+use PNGMetadata\Chunk\IccpDecoder;
 use PNGMetadata\Chunk\IhdrDecoder;
 use PNGMetadata\Chunk\ItxtDecoder;
 use PNGMetadata\Chunk\MetadataBuilder;
@@ -16,8 +19,12 @@ use PNGMetadata\Chunk\TextDecoder;
 use PNGMetadata\Chunk\XmpDecoder;
 use PNGMetadata\Chunk\ZtxtDecoder;
 use PNGMetadata\Metadata\BackgroundColor;
+use PNGMetadata\Metadata\Chromaticities;
+use PNGMetadata\Metadata\ColorSource;
 use PNGMetadata\Metadata\ColorType;
+use PNGMetadata\Metadata\Gamma;
 use PNGMetadata\Metadata\HeaderData;
+use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\InterlaceMethod;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Metadata\RenderingIntent;
@@ -56,6 +63,9 @@ use Random\Randomizer;
 #[CoversClass(ItxtDecoder::class)]
 #[CoversClass(ExifDecoder::class)]
 #[CoversClass(SrgbDecoder::class)]
+#[CoversClass(IccpDecoder::class)]
+#[CoversClass(GamaDecoder::class)]
+#[CoversClass(ChrmDecoder::class)]
 #[CoversClass(BkgdDecoder::class)]
 #[CoversClass(XmpDecoder::class)]
 #[CoversClass(MetadataDocument::class)]
@@ -65,6 +75,10 @@ use Random\Randomizer;
 #[CoversClass(RenderingIntent::class)]
 #[CoversClass(TextEntry::class)]
 #[CoversClass(BackgroundColor::class)]
+#[CoversClass(Gamma::class)]
+#[CoversClass(Chromaticities::class)]
+#[CoversClass(IccProfile::class)]
+#[CoversClass(ColorSource::class)]
 final class RandomizedCorpusTest extends TestCase
 {
 	/**
@@ -111,6 +125,18 @@ final class RandomizedCorpusTest extends TestCase
 			$builder->addSrgb($byte);
 		};
 
+		$ops[] = function (PngBuilder $builder): void {
+			$builder->addGama(45455);
+		};
+
+		$ops[] = function (PngBuilder $builder): void {
+			$builder->addChrm(31270, 32900, 64000, 33000, 30000, 60000, 15000, 6000);
+		};
+
+		$ops[] = function (PngBuilder $builder): void {
+			$builder->addIccp('ICC', PngBuilder::iccProfile());
+		};
+
 		$expectedBackground = null;
 		$ops[] = function (PngBuilder $builder) use ($randomizer, &$expectedBackground): void {
 			$rgb = [$randomizer->getInt(0, 65535), $randomizer->getInt(0, 65535), $randomizer->getInt(0, 65535)];
@@ -143,5 +169,9 @@ final class RandomizedCorpusTest extends TestCase
 		);
 		self::assertSame($expectedIntent, $doc->renderingIntent);
 		self::assertSame($expectedBackground?->toString(), $doc->background?->toString());
+		self::assertSame(45455, $doc->gamma?->scaled);
+		self::assertNotNull($doc->chromaticities);
+		self::assertSame('ICC', $doc->iccProfile?->name);
+		self::assertSame(ColorSource::Iccp, $doc->colorSource);
 	}
 }

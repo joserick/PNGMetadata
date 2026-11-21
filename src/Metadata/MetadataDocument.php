@@ -22,6 +22,10 @@ final readonly class MetadataDocument
 		public ?array $exif,
 		public ?string $exifRaw,
 		public ?RenderingIntent $renderingIntent,
+		public ?IccProfile $iccProfile,
+		public ?Gamma $gamma,
+		public ?Chromaticities $chromaticities,
+		public ?ColorSource $colorSource,
 		public ?BackgroundColor $background,
 	) {
 	}
@@ -42,6 +46,18 @@ final readonly class MetadataDocument
 		}
 		if ($this->renderingIntent !== null) {
 			$out['sRGB'] = $this->renderingIntent->label();
+		}
+		if ($this->colorSource !== null) {
+			$out['colorSource'] = $this->colorSource->label();
+		}
+		if ($this->iccProfile !== null) {
+			$out['iCCP'] = $this->iccProfile->toArray();
+		}
+		if ($this->gamma !== null) {
+			$out['gAMA'] = $this->gamma->value();
+		}
+		if ($this->chromaticities !== null) {
+			$out['cHRM'] = $this->chromaticities->toArray();
 		}
 		if ($this->background !== null) {
 			$out['bKGD'] = $this->background->toString();
