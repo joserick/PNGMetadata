@@ -12,7 +12,7 @@ It is important to mention that PNGMetadata does **not** use the software ExifTo
 
 Version 2 is a ground-up rewrite on a layered architecture with a **typed, immutable API**. v2 is a **breaking release**: the v1 `PNGMetadata` array facade is gone and the typed core is now the only interface. The [1.x line](https://github.com/joserick/PNGMetadata) stays available (security fixes only) for anyone who needs the old API. See [Upgrading from v1](#upgrading-from-v1) for the migration map.
 
-> **Status: `2.0.0-beta.2` pre-release.** v2 is available for testing but is
+> **Status: `2.0.0-beta.3` pre-release.** v2 is available for testing but is
 > not yet the default stable line. Install the beta explicitly (see
 > [Installation](#installation)); the supported chunk set is `IHDR`, `tEXt`,
 > `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB` and `bKGD`. Phase 2 chunks (`iCCP`,
@@ -24,6 +24,7 @@ Version 2 is a ground-up rewrite on a layered architecture with a **typed, immut
 - **Layered core**: binary parsing → chunk decoders → typed domain model, with dependencies pointing inward.
 - **Flexible input**: file path, binary string, or stream resource.
 - **Strict mode** with per-chunk CRC-32 and ordering validation.
+- **Zlib-bomb protection**: compressed `zTXt`/`iTXt` text shares a 16 MiB per-read inflation budget, configurable with `maxInflatedBytes`.
 - **Memory-safe on big images**: `IDAT`/`fdAT` payloads are skipped lazily; extraction cost is proportional to the metadata, not the pixels.
 - **Bug fixes**: EXIF decode failures no longer fatal, positional iTXt parsing (compressed text, language tags), Latin-1 → UTF-8 for tEXt, EXIF magic-byte validation, truncated-file safety.
 - **Zero optional extensions**: GD is gone entirely — the embedded thumbnail is returned as bytes.
@@ -45,7 +46,7 @@ v2 is currently distributed as a pre-release tag. Install it explicitly until
 `2.0.0` stable is published:
 
 ```bash
-$ composer require joserick/png-metadata:2.0.0-beta.2
+$ composer require joserick/png-metadata:2.0.0-beta.3
 ```
 
 The unversioned `composer require joserick/png-metadata` command continues to
