@@ -25,6 +25,7 @@ $document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt)
 $document->xmp;                         // structured array
 $document->exif;                        // decoded EXIF sections
 $document->background;                  // ?BackgroundColor
+$document->transparency;                // ?Transparency (tRNS)
 $document->thumbnailBytes();            // ?string (no GD needed)
 $document->toArray();                   // plain array (typed structure)
 ```
@@ -74,6 +75,14 @@ $document->iccProfile;       // ?IccProfile
 $document->gamma;            // ?Gamma
 $document->chromaticities;   // ?Chromaticities
 $document->colorSource;      // ?ColorSource
+```
+
+## Transparency
+
+`tRNS` is interpreted from the IHDR color type: a gray key, an RGB key or a palette alpha table. It is exposed as `Transparency` and serialized under the `tRNS` key. The chunk is invalid for color types that already carry alpha.
+
+```php
+$document->transparency?->toArray(); // ['gray' => …], RGB, or ['alpha' => [...]]
 ```
 
 ## Exceptions

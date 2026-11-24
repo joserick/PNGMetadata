@@ -102,10 +102,10 @@ height, bitDepth, `ColorType`, compression/filter, `InterlaceMethod`), `texts`
 array), `exif` (decoded sections), `background` (`BackgroundColor`),
 `renderingIntent` (`RenderingIntent`), `iccProfile` (`IccProfile`), `gamma`
 (`Gamma`), `chromaticities` (`Chromaticities`), `colorSource` (`ColorSource`,
-the PNG §4.3 precedence result), `thumbnailBytes(): ?string` (no GD), and
-`toArray()`. Errors are typed exceptions under `PngMetadataException`
-(`InvalidPngException`, `TruncatedDataException`, `ChunkDecodingException`,
-`CrcMismatchException`).
+the PNG §4.3 precedence result), `transparency` (`Transparency`),
+`thumbnailBytes(): ?string` (no GD), and `toArray()`. Errors are typed
+exceptions under `PngMetadataException` (`InvalidPngException`,
+`TruncatedDataException`, `ChunkDecodingException`, `CrcMismatchException`).
 
 `PngMetadataReader::create(bool $strict = false, int $maxInflatedBytes = 16 MiB)`
 also bounds the per-read inflation budget shared by `zTXt`, compressed `iTXt`
@@ -199,7 +199,7 @@ identical do not need a spec delta.
 The chunk bible and architecture for these live in
 `openspec/changes/archive/2026-08-12-modernize-architecture/design.md` (D7, D8):
 
-- **Phase 2 — classic coverage:** tRNS, tIME, pHYs, sBIT and the `PLTE`
+- **Phase 2 — classic coverage:** tIME, pHYs, sBIT and the `PLTE`
   decision. The color-precedence resolver for the supported chunks
   (iCCP > sRGB > cHRM+gAMA) is implemented; Phase 3 extends it with `cICP`.
 - **Phase 3 — PNG 3.0:** cICP / mDCV / cLLI (HDR signaling, H.273 enums), APNG summary

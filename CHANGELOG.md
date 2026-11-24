@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-beta.5] - Unreleased
+
+### Added
+
+- `tRNS` decoding by IHDR color type: grayscale and truecolor transparency
+  keys, plus palette alpha tables exposed as typed `Transparency`. The chunk is
+  rejected for color types that already carry alpha, follows the unified
+  lenient/strict length policy, and is a first-wins singleton.
+
 ## [2.0.0-beta.4] - 2026-11-20
 
 ### Added
@@ -147,6 +156,7 @@ is the only public API. The v1→v2 migration map lives in the README
   (the `suggest` entry is gone); embedded thumbnails are served as bytes via
   `MetadataDocument::thumbnailBytes()`.
 
+[2.0.0-beta.5]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.4...v2.0.0-beta.5
 [2.0.0-beta.4]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.3...v2.0.0-beta.4
 [2.0.0-beta.3]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.2...v2.0.0-beta.3
 [2.0.0-beta.2]: https://github.com/joserick/PNGMetadata/compare/v2.0.0-beta.1...v2.0.0-beta.2

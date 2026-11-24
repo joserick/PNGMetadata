@@ -15,8 +15,8 @@ Version 2 is a ground-up rewrite on a layered architecture with a **typed, immut
 > **Status: `2.0.0-beta.4` pre-release.** v2 is available for testing but is
 > not yet the default stable line. Install the beta explicitly (see
 > [Installation](#installation)); the supported chunk set is `IHDR`, `tEXt`,
-> `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB`, `iCCP`, `gAMA`, `cHRM` and `bKGD`.
-> Phase 2 chunks (`tRNS`, `tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
+> `zTXt`, `iTXt`/XMP, `eXIf`, `sRGB`, `iCCP`, `gAMA`, `cHRM`, `bKGD` and
+> `tRNS`. Phase 2 chunks (`tIME`, `pHYs`, `sBIT`, `PLTE`) and Phase 3
 > (APNG/HDR signaling) are follow-ups. API changes are still possible before
 > `2.0.0` stable; feedback goes through the `v2-beta` issue template/label.
 
@@ -26,6 +26,7 @@ Version 2 is a ground-up rewrite on a layered architecture with a **typed, immut
 - **Strict mode** with per-chunk CRC-32 and ordering validation.
 - **Zlib-bomb protection**: compressed `zTXt`/`iTXt`/`iCCP` payloads share a 16 MiB per-read inflation budget, configurable with `maxInflatedBytes`.
 - **Color metadata**: `sRGB`, `iCCP`, `gAMA` and `cHRM`, with the PNG §4.3 precedence result exposed as `colorSource`.
+- **Transparency**: grayscale and truecolor `tRNS` keys plus palette alpha tables, exposed as typed `Transparency`.
 - **Memory-safe on big images**: `IDAT`/`fdAT` payloads are skipped lazily; extraction cost is proportional to the metadata, not the pixels.
 - **Bug fixes**: EXIF decode failures no longer fatal, positional iTXt parsing (compressed text, language tags), Latin-1 → UTF-8 for tEXt, EXIF magic-byte validation, truncated-file safety.
 - **Zero optional extensions**: GD is gone entirely — the embedded thumbnail is returned as bytes.
@@ -98,6 +99,7 @@ $document->texts;                       // TextEntry[] (tEXt + zTXt + iTXt, file
 $document->xmp;                         // ?array structured XMP
 $document->exif;                        // ?array decoded EXIF sections
 $document->background;                  // ?BackgroundColor
+$document->transparency;                // ?Transparency (tRNS)
 $document->thumbnailBytes();            // ?string raw EXIF thumbnail, no GD
 ```
 

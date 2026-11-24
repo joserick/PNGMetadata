@@ -25,7 +25,7 @@ This section is the heart of the documentation: **each chunk type, what it means
 | `mDCV` | Display color volume | ⏳ Phase 3 | [PNG 3.0 / HDR](/en/chunks/png-3-hdr-apng.html) |
 | `cLLI` | Content light levels | ⏳ Phase 3 | [PNG 3.0 / HDR](/en/chunks/png-3-hdr-apng.html) |
 | `bKGD` | Background color | ✅ | [Background & transparency](/en/chunks/background-transparency.html) |
-| `tRNS` | Transparency | ⏳ Phase 2 | [Background & transparency](/en/chunks/background-transparency.html) |
+| `tRNS` | Transparency | ✅ | [Background & transparency](/en/chunks/background-transparency.html) |
 | `tIME` | Modification time | ⏳ Phase 2 | [Miscellaneous](/en/chunks/miscellaneous.html) |
 | `pHYs` | Physical dimensions (DPI) | ⏳ Phase 2 | [Miscellaneous](/en/chunks/miscellaneous.html) |
 | `sBIT` | Significant bits | ⏳ Phase 2 | [Miscellaneous](/en/chunks/miscellaneous.html) |

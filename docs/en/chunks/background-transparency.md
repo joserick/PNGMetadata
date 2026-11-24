@@ -64,8 +64,13 @@ The `tRNS` (*transparency*) chunk allows defining transparency when the color ty
 The idea: instead of storing a full alpha channel (which doubles the size), one color is designated as "transparent".
 
 ::: info Status
-`tRNS` is planned for Phase 2. Like `bKGD`, it requires interpretation based on the color type.
+`tRNS` is supported since `2.0.0-beta.5`. `TrnsDecoder` uses the IHDR color type to choose the variant, rejects `tRNS` for alpha color types, and treats the payload length according to the same lenient/strict policy as `bKGD`.
 :::
+
+```php
+$document->transparency;                  // ?Transparency
+$document->transparency?->toArray();
+```
 
 ## Next
 

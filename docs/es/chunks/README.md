@@ -25,7 +25,7 @@ Esta sección es el corazón de la documentación: **cada tipo de chunk, qué si
 | `mDCV` | Volumen de color del display | ⏳ Fase 3 | [PNG 3.0 / HDR](/es/chunks/png-3-hdr-apng.html) |
 | `cLLI` | Niveles de luz del contenido | ⏳ Fase 3 | [PNG 3.0 / HDR](/es/chunks/png-3-hdr-apng.html) |
 | `bKGD` | Color de fondo | ✅ | [Fondo y transparencia](/es/chunks/background-transparency.html) |
-| `tRNS` | Transparencia | ⏳ Fase 2 | [Fondo y transparencia](/es/chunks/background-transparency.html) |
+| `tRNS` | Transparencia | ✅ | [Fondo y transparencia](/es/chunks/background-transparency.html) |
 | `tIME` | Fecha de modificación | ⏳ Fase 2 | [Misceláneos](/es/chunks/miscellaneous.html) |
 | `pHYs` | Dimensiones físicas (DPI) | ⏳ Fase 2 | [Misceláneos](/es/chunks/miscellaneous.html) |
 | `sBIT` | Bits significativos | ⏳ Fase 2 | [Misceláneos](/es/chunks/miscellaneous.html) |
