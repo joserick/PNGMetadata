@@ -14,6 +14,7 @@ use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
+use PNGMetadata\Metadata\Transparency;
 
 /**
  * The single accumulator used while decoding chunks (ADR-003): decoders never
@@ -44,6 +45,8 @@ final class MetadataBuilder
 	private ?Chromaticities $chromaticities = null;
 
 	private ?BackgroundColor $background = null;
+
+	private ?Transparency $transparency = null;
 
 	/** @var array<string, true> singletons already accepted (first wins) */
 	private array $singletons = [];
@@ -139,6 +142,14 @@ final class MetadataBuilder
 		$this->background = $background;
 	}
 
+	public function setTransparency(Transparency $transparency, string $chunkCode, int $offset): void
+	{
+		if (!$this->acceptsSingleton('tRNS', $chunkCode, $offset)) {
+			return;
+		}
+		$this->transparency = $transparency;
+	}
+
 	/**
 	 * Freeze the accumulated state into the document exposed to consumers.
 	 */
@@ -156,6 +167,7 @@ final class MetadataBuilder
 			chromaticities: $this->chromaticities,
 			colorSource: $this->resolveColorSource(),
 			background: $this->background,
+			transparency: $this->transparency,
 		);
 	}
 

@@ -45,6 +45,7 @@ final class ChunkDecoderRegistry
 			new GamaDecoder(),
 			new ChrmDecoder(),
 			new BkgdDecoder(),
+			new TrnsDecoder(),
 		];
 	}
 

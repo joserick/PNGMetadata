@@ -27,6 +27,7 @@ final readonly class MetadataDocument
 		public ?Chromaticities $chromaticities,
 		public ?ColorSource $colorSource,
 		public ?BackgroundColor $background,
+		public ?Transparency $transparency,
 	) {
 	}
 
@@ -61,6 +62,9 @@ final readonly class MetadataDocument
 		}
 		if ($this->background !== null) {
 			$out['bKGD'] = $this->background->toString();
+		}
+		if ($this->transparency !== null) {
+			$out['tRNS'] = $this->transparency->toArray();
 		}
 		if ($this->exif !== null) {
 			$out['exif'] = $this->exif;

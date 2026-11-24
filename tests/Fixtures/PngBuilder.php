@@ -112,6 +112,11 @@ final class PngBuilder
 		return $this->addChunk('bKGD', $payload);
 	}
 
+	public function addTrns(string $payload): self
+	{
+		return $this->addChunk('tRNS', $payload);
+	}
+
 	public function addIdat(int $size = 1024): self
 	{
 		return $this->addChunk('IDAT', \str_repeat("\x00", $size));

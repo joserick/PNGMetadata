@@ -97,6 +97,16 @@ final class MetadataDocumentTest extends TestCase
 	}
 
 	#[Test]
+	public function it_serializes_transparency_metadata(): void
+	{
+		$array = PngMetadataReader::create()->read(
+			PngBuilder::create()->withIhdr(10, 10, 8, 0)->addTrns("\x00\x80")->build(),
+		)->toArray();
+
+		self::assertSame(['gray' => 128], $array['tRNS']);
+	}
+
+	#[Test]
 	public function it_rejects_non_png_input_at_reader_level(): void
 	{
 		$this->expectException(InvalidPngException::class);

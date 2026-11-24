@@ -14,6 +14,7 @@ use PNGMetadata\Metadata\IccProfile;
 use PNGMetadata\Metadata\InterlaceMethod;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
+use PNGMetadata\Metadata\Transparency;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -28,6 +29,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Chromaticities::class)]
 #[CoversClass(IccProfile::class)]
 #[CoversClass(ColorSource::class)]
+#[CoversClass(Transparency::class)]
 final class MetadataValueObjectsTest extends TestCase
 {
 	#[Test]
@@ -149,6 +151,28 @@ final class MetadataValueObjectsTest extends TestCase
 		self::assertSame('iCCP', ColorSource::Iccp->label());
 		self::assertSame('sRGB', ColorSource::Srgb->label());
 		self::assertSame('cHRM+gAMA', ColorSource::Chromaticities->label());
+	}
+
+	#[Test]
+	public function transparency_exposes_each_variant(): void
+	{
+		$gray = Transparency::grayscale(128);
+		self::assertSame(128, $gray->gray);
+		self::assertSame([], $gray->alpha);
+		self::assertSame(['gray' => 128], $gray->toArray());
+
+		$rgb = Transparency::rgb(255, 0, 128);
+		self::assertSame(255, $rgb->red);
+		self::assertSame(0, $rgb->green);
+		self::assertSame(128, $rgb->blue);
+		self::assertSame(['red' => 255, 'green' => 0, 'blue' => 128], $rgb->toArray());
+
+		$palette = Transparency::palette([0, 128, 255]);
+		self::assertSame([0, 128, 255], $palette->alpha);
+		self::assertSame(['alpha' => [0, 128, 255]], $palette->toArray());
+
+		$sparse = Transparency::palette([2 => 10, 5 => 20]);
+		self::assertSame([10, 20], $sparse->alpha);
 	}
 
 	#[Test]

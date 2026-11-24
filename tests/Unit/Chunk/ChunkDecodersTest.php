@@ -17,6 +17,7 @@ use PNGMetadata\Metadata\InterlaceMethod;
 use PNGMetadata\Metadata\MetadataDocument;
 use PNGMetadata\Metadata\RenderingIntent;
 use PNGMetadata\Metadata\TextEntry;
+use PNGMetadata\Metadata\Transparency;
 use PNGMetadata\Chunk\BkgdDecoder;
 use PNGMetadata\Chunk\ChrmDecoder;
 use PNGMetadata\Chunk\ChunkDecoderInterface;
@@ -30,6 +31,7 @@ use PNGMetadata\Chunk\ItxtDecoder;
 use PNGMetadata\Chunk\MetadataBuilder;
 use PNGMetadata\Chunk\SrgbDecoder;
 use PNGMetadata\Chunk\TextDecoder;
+use PNGMetadata\Chunk\TrnsDecoder;
 use PNGMetadata\Chunk\XmpDecoder;
 use PNGMetadata\Chunk\ZtxtDecoder;
 use PNGMetadata\Exception\InvalidPngException;
@@ -62,6 +64,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(GamaDecoder::class)]
 #[CoversClass(ChrmDecoder::class)]
 #[CoversClass(BkgdDecoder::class)]
+#[CoversClass(TrnsDecoder::class)]
 #[CoversClass(XmpDecoder::class)]
 #[CoversClass(MetadataDocument::class)]
 #[CoversClass(HeaderData::class)]
@@ -74,6 +77,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Chromaticities::class)]
 #[CoversClass(IccProfile::class)]
 #[CoversClass(ColorSource::class)]
+#[CoversClass(Transparency::class)]
 #[CoversClass(ChunkDecodingException::class)]
 #[CoversClass(TruncatedDataException::class)]
 #[CoversClass(InvalidPngException::class)]
@@ -1437,6 +1441,180 @@ final class ChunkDecodersTest extends TestCase
 	}
 
 	#[Test]
+	public function it_decodes_grayscale_trns(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->withIhdr(10, 10, 8, 0)->addTrns("\x00\x80")->build(),
+		);
+
+		self::assertSame(128, $doc->transparency?->gray);
+		self::assertSame(['gray' => 128], $doc->toArray()['tRNS']);
+	}
+
+	#[Test]
+	public function it_decodes_truecolor_trns(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->withIhdr(10, 10, 8, 2)
+				->addTrns(\pack('nnn', 65535, 0, 32768))
+				->build(),
+		);
+
+		self::assertSame(
+			['red' => 65535, 'green' => 0, 'blue' => 32768],
+			$doc->transparency?->toArray(),
+		);
+	}
+
+	#[Test]
+	public function it_decodes_palette_trns_in_index_order(): void
+	{
+		$doc = PngMetadataReader::create()->read(
+			PngBuilder::create()->withIhdr(10, 10, 8, 3)->addTrns("\x00\x80\xFF")->build(),
+		);
+
+		self::assertSame([0, 128, 255], $doc->transparency?->alpha);
+		self::assertSame(['alpha' => [0, 128, 255]], $doc->toArray()['tRNS']);
+	}
+
+	#[Test]
+	public function palette_trns_accepts_one_and_256_alpha_bytes(): void
+	{
+		$one = PngMetadataReader::create()->read(
+			PngBuilder::create()->withIhdr(10, 10, 8, 3)->addTrns("\x00")->build(),
+		);
+		self::assertSame([0], $one->transparency?->alpha);
+
+		$all = PngMetadataReader::create()->read(
+			PngBuilder::create()
+				->withIhdr(10, 10, 8, 3)
+				->addTrns(\str_repeat("\x7F", 256))
+				->build(),
+		);
+		self::assertCount(256, $all->transparency?->alpha ?? []);
+	}
+
+	/**
+	 * @return iterable<string, array{int, string, int}>
+	 */
+	public static function shortTrnsCases(): iterable
+	{
+		yield 'grayscale needs 2' => [0, "\x80", 2];
+		yield 'truecolor needs 6' => [2, "\x01\x02", 6];
+	}
+
+	#[Test]
+	#[DataProvider('shortTrnsCases')]
+	public function short_trns_payload_follows_the_policy(int $colorType, string $payload, int $required): void
+	{
+		$png = PngBuilder::create()->withIhdr(10, 10, 8, $colorType)->addTrns($payload)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->transparency);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage(\sprintf('tRNS needs at least %d byte', $required));
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function trailing_trns_bytes_are_tolerated_only_in_lenient_mode(): void
+	{
+		$png = PngBuilder::create()->withIhdr(10, 10, 8, 0)->addTrns("\x00\x80\x00")->build();
+
+		self::assertSame(128, PngMetadataReader::create()->read($png)->transparency?->gray);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('tRNS payload must be exactly 2 byte');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function empty_palette_trns_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()->withIhdr(10, 10, 8, 3)->addTrns('')->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->transparency);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('tRNS palette alpha table must contain 1-256 bytes, 0 given');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function oversized_palette_trns_follows_the_policy(): void
+	{
+		$png = PngBuilder::create()
+			->withIhdr(10, 10, 8, 3)
+			->addTrns(\str_repeat("\0", 257))
+			->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->transparency);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('tRNS palette alpha table must contain 1-256 bytes, 257 given');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	/**
+	 * @return iterable<string, array{int, string}>
+	 */
+	public static function alphaColorTypes(): iterable
+	{
+		yield 'grayscale with alpha' => [4, "\x00\x80"];
+		yield 'rgb with alpha' => [6, \pack('nnn', 1, 2, 3)];
+	}
+
+	#[Test]
+	#[DataProvider('alphaColorTypes')]
+	public function trns_is_forbidden_for_alpha_color_types(int $colorType, string $payload): void
+	{
+		$png = PngBuilder::create()->withIhdr(10, 10, 8, $colorType)->addTrns($payload)->build();
+
+		self::assertNull(PngMetadataReader::create()->read($png)->transparency);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('tRNS is not permitted for color type');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
+	public function trns_without_header_raises_a_domain_failure_not_a_logic_crash(): void
+	{
+		$payload = "\x00\x80";
+		$stream = \fopen('php://temp', 'r+b');
+		self::assertIsResource($stream);
+		\fwrite($stream, $payload);
+		\rewind($stream);
+
+		$chunk = new RawChunk(ChunkType::fromBytes('tRNS'), \strlen($payload), 0, 0, $stream);
+
+		try {
+			$this->expectException(ChunkDecodingException::class);
+			$this->expectExceptionMessage('tRNS cannot be interpreted before the IHDR chunk');
+			(new TrnsDecoder())->decode($chunk, new DecodingContext(), new MetadataBuilder());
+		} finally {
+			\fclose($stream);
+		}
+	}
+
+	#[Test]
+	public function duplicate_trns_follows_the_singleton_policy(): void
+	{
+		$png = PngBuilder::create()
+			->withIhdr(10, 10, 8, 0)
+			->addTrns("\x00\x80")
+			->addTrns("\x00\x01")
+			->build();
+
+		self::assertSame(128, PngMetadataReader::create()->read($png)->transparency?->gray);
+
+		$this->expectException(ChunkDecodingException::class);
+		$this->expectExceptionMessage('only one tRNS chunk is allowed');
+		PngMetadataReader::create(strict: true)->read($png);
+	}
+
+	#[Test]
 	public function valid_exif_profile_is_decoded(): void
 	{
 		$doc = PngMetadataReader::create()->read(
@@ -1492,7 +1670,7 @@ final class ChunkDecodersTest extends TestCase
 	public function the_default_registry_covers_every_supported_chunk(): void
 	{
 		self::assertSame(
-			['IHDR', 'tEXt', 'zTXt', 'iTXt', 'eXIf', 'sRGB', 'iCCP', 'gAMA', 'cHRM', 'bKGD'],
+			['IHDR', 'tEXt', 'zTXt', 'iTXt', 'eXIf', 'sRGB', 'iCCP', 'gAMA', 'cHRM', 'bKGD', 'tRNS'],
 			\array_map(
 				static fn (ChunkDecoderInterface $decoder): string => $decoder->supports(),
 				ChunkDecoderRegistry::defaults(),
